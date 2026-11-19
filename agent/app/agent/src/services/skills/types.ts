@@ -14,6 +14,7 @@
  */
 
 import { z } from "zod";
+import type { SkillAuthorizationProof } from "./skillAuthorizationVerifier.js";
 
 export type SkillCategory =
   | "market"
@@ -31,14 +32,8 @@ export interface SkillExecutionContext {
   callerAddress?: string;
   callerTag?: string;
   agentIdTier?: string;
-  authorization?: {
-    isAuthorized: boolean;
-    approvedBy?: string;
-    signature?: string;
-    nonce?: number;
-    expiresAt?: number;
-    type?: "eip712" | "eip191";
-  };
+  authProof?: SkillAuthorizationProof;
+  userConfirmationAccepted?: boolean;
   transport?: "live" | "sandbox" | "simulated";
   testSeam?: any;
 }

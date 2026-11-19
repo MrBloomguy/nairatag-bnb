@@ -1,19 +1,32 @@
 /**
- * Binance Skill Router (Phase 3)
- * ===============================
- * Enforces parameter schema validation, permission checks, and the
- * interactive user consent gate ("Identity is not Authority")
- * prior to dispatching skills to their handlers.
+ * Binance Skill Router (Phase 3 Remediation)
+ * ==========================================
+ * Enforces parameter schema validation, central cryptographic consent verification,
+ * and durable replay protection prior to dispatching skills to their handlers.
+ *
+ * Strict Requirement 1:
+ * Never treat `isAuthorized: true`, a non-empty signature, or a matching address
+ * as proof of authorization. Central cryptographic verification is strictly enforced.
  */
 
 import { SkillRegistry, globalSkillRegistry } from "./skillRegistry.js";
 import { SkillExecutionContext, SkillExecutionResult } from "./types.js";
+import {
+  SkillAuthorizationVerifier,
+  globalSkillAuthVerifier,
+  VerifySkillAuthRequest,
+} from "./skillAuthorizationVerifier.js";
 
 export class SkillRouter {
   private registry: SkillRegistry;
+  private authVerifier: SkillAuthorizationVerifier;
 
-  constructor(registry: SkillRegistry = globalSkillRegistry) {
+  constructor(
+    registry: SkillRegistry = globalSkillRegistry,
+    authVerifier: SkillAuthorizationVerifier = globalSkillAuthVerifier
+  ) {
     this.registry = registry;
+    this.authVerifier = authVerifier;
   }
 
   /**
@@ -66,49 +79,103 @@ export class SkillRouter {
       };
     }
 
-    // 3. Permission & Interactive User Consent Gate
+    // 3. Central Cryptographic Consent & Verification Gate
     // "Identity is not Authority": Financial skills strictly require verified cryptographic consent
     if (skill.requiresUserConsent) {
-      if (!context.authorization || !context.authorization.isAuthorized) {
+      const data = parsed.data as any;
+
+      // 3a. Mainnet Settlement Lock (Policy Enforced)
+      if (data.chainId === 56 || data.network === "bsc-mainnet" || data.network === "mainnet" || data.network === "bsc") {
         return {
           success: false,
           skillId: skill.id,
           classification: "SIMULATED",
           metadata: {
-            source: "Binance Skill Authorization Gate",
+            source: "Binance Skill Central Mainnet Lock",
             timestamp: new Date().toISOString(),
             latencyMs: Date.now() - startTime,
           },
           error: {
-            code: "UNAUTHORIZED_FINANCIAL_ACTION",
-            message: `Skill '${skill.id}' is a financial execution capability and strictly requires interactive user cryptographic authorization (EIP-712 or EIP-191).`,
+            code: "MAINNET_SETTLEMENT_DISABLED",
+            message:
+              "CRITICAL: BNB Mainnet live settlement is strictly disabled by protocol policy. Only BSC Testnet (Chain ID 97) execution is permitted.",
           },
         };
       }
 
-      // Check signature format if provided
-      if (context.authorization.signature) {
-        const sig = context.authorization.signature.trim();
-        if (!/^0x[0-9a-fA-F]{130,132}$/.test(sig)) {
-          return {
-            success: false,
-            skillId: skill.id,
-            classification: "SIMULATED",
-            metadata: {
-              source: "Binance Skill Authorization Gate",
-              timestamp: new Date().toISOString(),
-              latencyMs: Date.now() - startTime,
-            },
-            error: {
-              code: "INVALID_SIGNATURE_FORMAT",
-              message: "Authorization signature must be a 65-byte hex string (0x...).",
-            },
-          };
+      // 3b. Explicit User Confirmation Check
+      if (data.confirmationAccepted === false && !context.userConfirmationAccepted) {
+        return {
+          success: false,
+          skillId: skill.id,
+          classification: "SIMULATED",
+          metadata: {
+            source: "Binance Skill Central User Confirmation Gate",
+            timestamp: new Date().toISOString(),
+            latencyMs: Date.now() - startTime,
+          },
+          error: {
+            code: "CONFIRMATION_REQUIRED",
+            message: `User confirmation required. Please review and confirm the transfer: send ${data.amount} ${data.token} to ${data.recipient}.`,
+          },
+        };
+      }
+
+      const authReq: VerifySkillAuthRequest = {
+        skillId: skill.id,
+        sender: data.sender ?? context.callerAddress ?? "",
+        recipient: data.recipient ?? "",
+        amount: data.amount ?? "",
+        token: data.token ?? "",
+        chainId: data.chainId ?? 97,
+        authProof: context.authProof,
+      };
+
+      const authCheck = await this.authVerifier.verifyAuthorization(authReq);
+      if (!authCheck.valid) {
+        return {
+          success: false,
+          skillId: skill.id,
+          classification: "SIMULATED",
+          metadata: {
+            source: "Binance Skill Central Authorization Gate",
+            timestamp: new Date().toISOString(),
+            latencyMs: Date.now() - startTime,
+          },
+          error: {
+            code: authCheck.code ?? "UNAUTHORIZED_FINANCIAL_ACTION",
+            message: authCheck.error ?? "Cryptographic authorization verification failed.",
+          },
+        };
+      }
+
+      // Dispatch to skill handler
+      try {
+        const result = await skill.handler(parsed.data, context);
+        if (result.success && result.classification === "LIVE") {
+          // Durably record execution to prevent replay
+          this.authVerifier.recordExecution(authReq);
         }
+        return result;
+      } catch (err: any) {
+        return {
+          success: false,
+          skillId: skill.id,
+          classification: "SIMULATED",
+          metadata: {
+            source: "Binance Skill Router",
+            timestamp: new Date().toISOString(),
+            latencyMs: Date.now() - startTime,
+          },
+          error: {
+            code: "SKILL_EXECUTION_ERROR",
+            message: `Error executing skill '${skill.id}': ${err.message || String(err)}`,
+          },
+        };
       }
     }
 
-    // 4. Dispatch to Skill Handler
+    // 4. Read-Only Skills: Dispatch directly
     try {
       return await skill.handler(parsed.data, context);
     } catch (err: any) {

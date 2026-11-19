@@ -282,6 +282,8 @@ export const LLM_READ_TOOLS: ToolSet = {
       signature,
       nonce,
       expires_at,
+      chain_id,
+      auth_type,
     }) => {
       let params;
       try {
@@ -297,18 +299,21 @@ export const LLM_READ_TOOLS: ToolSet = {
         };
       }
 
+      const authProof =
+        approver_address && signature && typeof nonce === "number" && typeof expires_at === "number"
+          ? {
+              approvedBy: approver_address,
+              signature,
+              nonce,
+              expiresAt: expires_at,
+              chainId: chain_id,
+              type: auth_type,
+            }
+          : undefined;
+
       const context = {
         callerAddress: approver_address,
-        authorization:
-          approver_address && signature
-            ? {
-                isAuthorized: true,
-                approvedBy: approver_address,
-                signature,
-                nonce,
-                expiresAt: expires_at,
-              }
-            : undefined,
+        authProof,
       };
 
       return globalSkillRouter.executeSkill(skill_id, params, context);

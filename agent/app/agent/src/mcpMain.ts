@@ -824,18 +824,21 @@ export function buildMcpServer(
         });
       }
 
+      const authProof =
+        a.approver_address && a.signature && typeof a.nonce === "number" && typeof a.expires_at === "number"
+          ? {
+              approvedBy: a.approver_address,
+              signature: a.signature,
+              nonce: a.nonce,
+              expiresAt: a.expires_at,
+              chainId: a.chain_id,
+              type: a.auth_type,
+            }
+          : undefined;
+
       const context = {
         callerAddress: a.approver_address,
-        authorization:
-          a.approver_address && a.signature
-            ? {
-                isAuthorized: true,
-                approvedBy: a.approver_address,
-                signature: a.signature,
-                nonce: a.nonce,
-                expiresAt: a.expires_at,
-              }
-            : undefined,
+        authProof,
       };
 
       return toolResult(await globalSkillRouter.executeSkill(a.skill_id, params, context));

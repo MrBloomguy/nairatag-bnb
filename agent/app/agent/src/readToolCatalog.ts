@@ -173,6 +173,8 @@ export const READ_TOOL_CATALOG = {
       signature: z.string().optional().describe("Cryptographic signature (EIP-712 or EIP-191) from approver (required for financial execution)"),
       nonce: z.number().int().positive().optional().describe("Monotonic nonce for replay protection"),
       expires_at: z.number().int().positive().optional().describe("Expiration timestamp in seconds"),
+      chain_id: z.number().int().positive().optional().describe("Chain ID where authorization applies (default 97 for bsc-testnet)"),
+      auth_type: z.enum(["eip712", "eip191"]).optional().describe("Signature type ('eip712' or 'eip191')"),
     },
   },
 } as const;
