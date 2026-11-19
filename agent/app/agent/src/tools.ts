@@ -32,6 +32,7 @@ import { tool, type ToolSet } from "ai";
 import { z } from "zod";
 import { READ_TOOL_CATALOG } from "./readToolCatalog.js";
 import { verifyAgentId } from "./services/agentIdVerifier.js";
+import { globalSpecialistDirectory } from "./services/specialistDirectory.js";
 
 /**
  * The project-wide default network (`[network].default`) — tool calls that
@@ -138,6 +139,39 @@ export const LLM_READ_TOOLS: ToolSet = {
         address: targetAddress ?? "",
         network: (network as "bsc-mainnet" | "bsc-testnet") ?? "bsc-mainnet",
       });
+    },
+  }),
+
+  // --- NairaTag Open Specialist Agent Directory & Discovery ---
+  discover_agents: tool({
+    description: READ_TOOL_CATALOG.discover_agents.description,
+    inputSchema: z.object(READ_TOOL_CATALOG.discover_agents.inputSchema),
+    execute: async ({ category, capability, keyword, require_agent_id }) => {
+      return globalSpecialistDirectory.discoverAgents({
+        category,
+        capability,
+        keyword,
+        requireAgentId: require_agent_id,
+      });
+    },
+  }),
+
+  get_agent_profile: tool({
+    description: READ_TOOL_CATALOG.get_agent_profile.description,
+    inputSchema: z.object(READ_TOOL_CATALOG.get_agent_profile.inputSchema),
+    execute: async ({ tag_or_address }) => {
+      if (tag_or_address.startsWith("0x") || tag_or_address.startsWith("0X")) {
+        return (
+          (await globalSpecialistDirectory.getAgentByAddress(tag_or_address)) ?? {
+            error: `No agent registered for address ${tag_or_address}`,
+          }
+        );
+      }
+      return (
+        (await globalSpecialistDirectory.getAgentByTag(tag_or_address)) ?? {
+          error: `No agent registered for tag ${tag_or_address}`,
+        }
+      );
     },
   }),
   // job_count: ...        // network-wide stat — usually noise

@@ -108,6 +108,23 @@ export const READ_TOOL_CATALOG = {
         .describe("Target network ('bsc-mainnet' or 'bsc-testnet', defaults to 'bsc-mainnet' where official contract is deployed)"),
     },
   },
+  discover_agents: {
+    description:
+      "Discover specialist agents in the open NairaTag directory by category, capability, or keyword.",
+    inputSchema: {
+      category: z.string().optional().describe("Category filter: 'defi', 'payments', 'data', 'logistics', 'security', 'general'"),
+      capability: z.string().optional().describe("Specific capability id or name (e.g. 'settlement.usdc', 'tvl_feed')"),
+      keyword: z.string().optional().describe("Keyword search across agent names, descriptions, and tags"),
+      require_agent_id: z.boolean().optional().describe("Filter to agents holding verified Binance Agent ID on BNB Mainnet"),
+    },
+  },
+  get_agent_profile: {
+    description:
+      "Retrieve the structured profile, verified trust tier, endpoints, and capabilities for a specific NairaTag (e.g. '₦BLOOM') or address.",
+    inputSchema: {
+      tag_or_address: z.string().describe("NairaTag (e.g. '₦BLOOM') or EVM address"),
+    },
+  },
 } as const;
 
 export type ReadToolName = keyof typeof READ_TOOL_CATALOG;

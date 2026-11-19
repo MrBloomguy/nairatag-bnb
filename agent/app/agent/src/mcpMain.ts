@@ -96,6 +96,7 @@ import {
 import * as signing from "./signing.js";
 import { READ_TOOL_CATALOG, type ReadToolName } from "./readToolCatalog.js";
 import { verifyAgentId } from "./services/agentIdVerifier.js";
+import { globalSpecialistDirectory } from "./services/specialistDirectory.js";
 
 const APP_NAME = "agent";
 function safeLogText(value: unknown): string {
@@ -681,6 +682,38 @@ export function buildMcpServer(
           address: targetAddress ?? "",
           network: (a.network as "bsc-mainnet" | "bsc-testnet") ?? "bsc-mainnet",
         }),
+      );
+    },
+  );
+  server.registerTool(
+    "discover_agents",
+    roConfig("discover_agents"),
+    async (a: ReadArgs<"discover_agents">) => {
+      return toolResult(
+        await globalSpecialistDirectory.discoverAgents({
+          category: a.category,
+          capability: a.capability,
+          keyword: a.keyword,
+          requireAgentId: a.require_agent_id,
+        }),
+      );
+    },
+  );
+  server.registerTool(
+    "get_agent_profile",
+    roConfig("get_agent_profile"),
+    async (a: ReadArgs<"get_agent_profile">) => {
+      if (a.tag_or_address.startsWith("0x") || a.tag_or_address.startsWith("0X")) {
+        return toolResult(
+          (await globalSpecialistDirectory.getAgentByAddress(a.tag_or_address)) ?? {
+            error: `No agent registered for address ${a.tag_or_address}`,
+          },
+        );
+      }
+      return toolResult(
+        (await globalSpecialistDirectory.getAgentByTag(a.tag_or_address)) ?? {
+          error: `No agent registered for tag ${a.tag_or_address}`,
+        },
       );
     },
   );
