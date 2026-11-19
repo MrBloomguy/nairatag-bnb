@@ -183,6 +183,7 @@ import { getAgentOnboarding, updateAgentOnboarding, syncAgentOnboardingRewards }
 import { claimAgentOnboardingReward, getAgentOnboardingRewardState } from './services/agentOnboardingRewards.js';
 import AgentOnboardingModal from './components/AgentOnboardingModal.jsx';
 import AgentSuccessModal from './components/AgentSuccessModal.jsx';
+import AuthConnectModal from './components/auth/AuthConnectModal.jsx';
 import { updatePersonalAgent } from './services/personalAgent.js';
 import { createArcTask, getArcAgentCompletedTaskCount, listArcTasks, startArcTask, submitArcTask, releaseTaskBountyOnChain, lockTaskBountyOnChain, getEscrowContractAddress } from './services/arcTasks.js';
 import { claimInHouseVoucher, getInHouseVouchers, listSocialTasks, syncInHouseVouchers } from './services/inHouseTasks.js';
@@ -1362,14 +1363,7 @@ function ArcAppShell() {
   });
 
   // Modals
-  const [isConnectModalOpen, setConnectModalOpen] = useState(false);
-  const setIsConnectModalOpen = useCallback((open) => {
-    if (open) {
-      launchPrivyLogin();
-      return;
-    }
-    setConnectModalOpen(false);
-  }, [launchPrivyLogin]);
+  const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
   const [isLinkingWallet, setIsLinkingWallet] = useState(false);
   const [authScreen, setAuthScreen] = useState('welcome'); // 'welcome' | 'create' | 'signin' | 'wallets'
   const [isSendReviewModalOpen, setIsSendReviewModalOpen] = useState(false);
@@ -2126,7 +2120,7 @@ function ArcAppShell() {
   const handleConnect = async (providerType) => {
     setIsConnecting(true);
     try {
-      const { address, chainId: cId } = await connectWallet();
+      const { address, chainId: cId } = await connectWallet(providerType);
       await establishWalletArcSession(address);
       setWalletAddress(address);
       setAuthProvider('injected');
@@ -2151,7 +2145,7 @@ function ArcAppShell() {
       console.error('[App] Wallet connection error:', err);
       const errMsg = err?.message || err?.reason || (typeof err === 'string' ? err : 'Connection rejected or wallet unavailable.');
       showToast(`Connection error: ${errMsg}`, 'error', 3500);
-      // alert suppressed in favor of toast
+      setIsConnectModalOpen(true);
     } finally {
       setIsConnecting(false);
     }
@@ -3329,10 +3323,18 @@ function ArcAppShell() {
             <button
               type="button"
               className="wallet-btn-pill header-connect-pill"
-              onClick={() => setIsConnectModalOpen(true)}
+              disabled={isConnecting}
+              onClick={() => {
+                const hasInjected = typeof window !== 'undefined' && Boolean(window.ethereum || window.BinanceChain);
+                if (hasInjected) {
+                  handleConnect();
+                } else {
+                  setIsConnectModalOpen(true);
+                }
+              }}
             >
               <ShieldCheck size={16} />
-              <span>Sign in</span>
+              <span>{isConnecting ? 'Connecting…' : 'Sign in'}</span>
             </button>
           )}
         </div>
@@ -6321,6 +6323,14 @@ function ArcAppShell() {
         agentName={currentTaggedAgent?.name || (myTag?.tag ? `₦${myTag.tag}` : 'NairaTag Agent')}
         accountEmail={accountEmail}
       />
+      {isConnectModalOpen && (
+        <AuthConnectModal
+          onClose={() => setIsConnectModalOpen(false)}
+          isConnecting={isConnecting}
+          authStatus={isConnecting ? 'Requesting wallet approval…' : ''}
+          handleConnect={(type) => handleConnect(type)}
+        />
+      )}
     </>
   );
 }

@@ -47,20 +47,46 @@ export const publicClient = createPublicClient({
 });
 
 /**
- * Detects available browser wallet (MetaMask, Rabby, Coinbase, Rainbow, etc.).
+ * Detects available browser wallet (Binance Web3 Wallet, MetaMask, Rabby, Trust, etc.).
  */
-export function getEthereumProvider() {
+export function getEthereumProvider(preferredType) {
   if (typeof window === 'undefined') return null;
-  return activeWalletProvider || window.ethereum || null;
+  if (activeWalletProvider) return activeWalletProvider;
+
+  if (preferredType === 'Binance' && window.BinanceChain) {
+    return window.BinanceChain;
+  }
+
+  if (window.ethereum?.providers && Array.isArray(window.ethereum.providers)) {
+    if (preferredType === 'MetaMask') {
+      const mm = window.ethereum.providers.find((p) => p.isMetaMask && !p.isRabby);
+      if (mm) return mm;
+    }
+    if (preferredType === 'Rabby') {
+      const rabby = window.ethereum.providers.find((p) => p.isRabby);
+      if (rabby) return rabby;
+    }
+    if (preferredType === 'Trust') {
+      const trust = window.ethereum.providers.find((p) => p.isTrust || p.isTrustWallet);
+      if (trust) return trust;
+    }
+    if (preferredType === 'Binance') {
+      const bsc = window.ethereum.providers.find((p) => p.isBinance || p.isBsc);
+      if (bsc) return bsc;
+    }
+    return window.ethereum.providers[0];
+  }
+
+  return window.ethereum || window.BinanceChain || null;
 }
 
 /**
  * Connects browser wallet and requests active account.
  */
-export async function connectWallet() {
-  const provider = getEthereumProvider();
+export async function connectWallet(preferredType) {
+  const provider = getEthereumProvider(preferredType);
   if (!provider) {
-    throw new Error('No EVM wallet detected. Please install MetaMask, Rabby, or Coinbase Wallet.');
+    throw new Error('No EVM wallet detected. Please install MetaMask, Binance Web3 Wallet, or Trust Wallet.');
   }
 
   const accounts = await provider.request({ method: 'eth_requestAccounts' });
