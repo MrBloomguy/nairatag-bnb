@@ -11,12 +11,12 @@ This repository is dedicated exclusively to **BNB Smart Chain (BSC)** developmen
 
 ## 1. Verified Deployments on BSC Testnet (`Chain ID: 97`)
 
-All core contracts are compiled, tested, deployed, and confirmed on BNB Smart Chain Testnet:
+All core contracts are compiled, tested, deployed, and **publicly verified (with green checkmark)** on BNB Smart Chain Testnet:
 
-| Contract | Testnet Address | Deployment Transaction Hash | Block | Explorer |
-|---|---|---|---|---|
-| **NairaTagRegistry** | `0x73434d121f46e188b7f12ef048062e79e5119cc3` | [`0x1cfbae15...`](https://testnet.bscscan.com/tx/0x1cfbae1538211e12be5414a222e811c39c0ec938600488e625695241886116db) | `143583829` | [BscScan](https://testnet.bscscan.com/address/0x73434d121f46e188b7f12ef048062e79e5119cc3) |
-| **NairaTagResolver** | `0x2ce440b6c63dc5e1128ab75ddac4d5da850de869` | [`0x03994d3e...`](https://testnet.bscscan.com/tx/0x03994d3e6db79b4a47c6f9ee556552ed4648c3bbb1bf4f48ed569f49a07be322) | `143583841` | [BscScan](https://testnet.bscscan.com/address/0x2ce440b6c63dc5e1128ab75ddac4d5da850de869) |
+| Contract | Testnet Address | Source Verification | Compiler | Optimization | Block | Explorer |
+|---|---|---|---|---|---|---|
+| **NairaTagRegistry** | `0x73434d121f46e188b7f12ef048062e79e5119cc3` | ✅ **Verified** | `v0.8.38` (commit `1835d247`) | 200 runs | `143583829` | [BscScan Source](https://testnet.bscscan.com/address/0x73434d121f46e188b7f12ef048062e79e5119cc3#code) |
+| **NairaTagResolver** | `0x2ce440b6c63dc5e1128ab75ddac4d5da850de869` | ✅ **Verified** | `v0.8.38` (commit `1835d247`) | 200 runs | `143583841` | [BscScan Source](https://testnet.bscscan.com/address/0x2ce440b6c63dc5e1128ab75ddac4d5da850de869#code) |
 
 ---
 
@@ -64,9 +64,10 @@ nairatag-bnb/
 │       ├── INairaTagRegistry.sol        # Registry interface
 │       ├── INairaTagResolver.sol        # Resolver interface
 │       └── IBinanceAgentID.sol          # Binance / SPACE ID Agent ID holder check
-├── script/                              # Deployment scripts
+├── script/                              # Deployment and verification scripts
 │   ├── DeployNairaTag.s.sol             # Foundry BSC Testnet script
-│   └── deploy-bsc-testnet.cjs           # On-chain deployment and verification script
+│   ├── deploy-bsc-testnet.cjs           # On-chain deployment script
+│   └── verify-contracts.cjs             # BscScan / Etherscan API V2 automated contract verifier
 ├── test/                                # Foundry unit tests
 │   └── NairaTagProtocol.t.sol           # Core protocol unit tests
 └── agent/                               # Official BNB Agent Studio seller agent project
