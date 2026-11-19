@@ -6,12 +6,21 @@
  * 2. NairaTagResolver (with constructor arguments)
  * 3. NairaTagAgentIDActivation (with constructor arguments)
  *
- * Uses Solidity Standard JSON Input format with exact compiler v0.8.24 / v0.8.38 and optimizer runs: 200.
+ * Uses Solidity Standard JSON Input format with exact Foundry build parameters:
+ * - Compiler: v0.8.24+commit.e11b9ed9
+ * - Optimizer: enabled: true, runs: 200
+ * - EVM Version: cancun
+ * - License: MIT
  */
 
 const fs = require('fs');
 const path = require('path');
 const { encodeAbiParameters, parseAbiParameters } = require('viem');
+
+const OFFICIAL_AGENT_ID = '0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F';
+const COMPILER_VERSION = 'v0.8.24+commit.e11b9ed9';
+const EVM_VERSION = 'cancun';
+const OPTIMIZER_RUNS = 200;
 
 async function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -23,7 +32,9 @@ async function verifyContract({
   contractName,
   sourceFiles,
   constructorArgs = '',
-  compilerVersion = 'v0.8.24+commit.e11b9ed9'
+  compilerVersion = COMPILER_VERSION,
+  evmVersion = EVM_VERSION,
+  optimizerRuns = OPTIMIZER_RUNS,
 }) {
   const basePath = path.resolve(__dirname, '..');
   const sources = {};
@@ -33,7 +44,7 @@ async function verifyContract({
       throw new Error('Source file missing: ' + fullPath);
     }
     sources[file] = {
-      content: fs.readFileSync(fullPath, 'utf8')
+      content: fs.readFileSync(fullPath, 'utf8'),
     };
   }
 
@@ -43,14 +54,15 @@ async function verifyContract({
     settings: {
       optimizer: {
         enabled: true,
-        runs: 200
+        runs: optimizerRuns,
       },
+      evmVersion: evmVersion,
       outputSelection: {
         '*': {
-          '*': ['abi', 'evm.bytecode', 'evm.deployedBytecode', 'metadata']
-        }
-      }
-    }
+          '*': ['abi', 'evm.bytecode', 'evm.deployedBytecode', 'metadata'],
+        },
+      },
+    },
   };
 
   const payload = new URLSearchParams({
@@ -60,15 +72,16 @@ async function verifyContract({
     contractname: contractName,
     compilerversion: compilerVersion,
     constructorArguments: constructorArgs.replace(/^0x/, ''),
-    licenseType: '3' // MIT
+    licenseType: '3', // MIT
   });
 
   const submitUrl = `https://api.etherscan.io/v2/api?chainid=56&module=contract&action=verifysourcecode&apikey=${apiKey}`;
   console.log(`Submitting verification for ${contractName} at ${address}...`);
+  console.log(`  Compiler: ${compilerVersion} | EVM: ${evmVersion} | Runs: ${optimizerRuns}`);
 
   const res = await fetch(submitUrl, {
     method: 'POST',
-    body: payload
+    body: payload,
   }).then(r => r.json());
 
   if (res.status !== '1') {
@@ -84,8 +97,8 @@ async function verifyContract({
     const checkUrl = `https://api.etherscan.io/v2/api?chainid=56&module=contract&action=checkverifystatus&guid=${guid}&apikey=${apiKey}`;
     const checkRes = await fetch(checkUrl).then(r => r.json());
 
-    if (checkRes.result === 'Pass - Verified') {
-      console.log(`SUCCESS: ${contractName} is verified on BscScan!`);
+    if (checkRes.result === 'Pass - Verified' || checkRes.result.includes('Already Verified')) {
+      console.log(`\nSUCCESS: ${contractName} is verified on BscScan!`);
       return { verified: true, guid };
     } else if (checkRes.result.includes('Pending in queue')) {
       process.stdout.write('.');
@@ -103,6 +116,9 @@ async function main() {
   console.log('====================================================\n');
 
   const envPath = path.resolve(__dirname, '../.env');
+  if (!fs.existsSync(envPath)) {
+    throw new Error('.env file missing at: ' + envPath);
+  }
   const envContent = fs.readFileSync(envPath, 'utf8');
   const keyMatch = envContent.match(/BSCSCAN_API_KEY=(.+)/);
   if (!keyMatch) throw new Error('BSCSCAN_API_KEY missing in .env');
@@ -116,8 +132,10 @@ async function main() {
   const deployment = JSON.parse(fs.readFileSync(deployPath, 'utf8'));
 
   // 1. Verify NairaTagRegistry
-  const regAddress = deployment.contracts.NairaTagRegistry.address;
-  await verifyContract({
+  const regAddress = deployment.contracts.NairaTagRegistry?.address;
+  if (!regAddress) throw new Error('NairaTagRegistry address missing in deployments/bsc-mainnet.json');
+
+  const regVer = await verifyContract({
     apiKey,
     address: regAddress,
     contractName: 'src/NairaTagRegistry.sol:NairaTagRegistry',
@@ -125,17 +143,22 @@ async function main() {
       'src/NairaTagRegistry.sol',
       'src/interfaces/INairaTagRegistry.sol',
       'src/interfaces/INairaTagResolver.sol',
-      'src/interfaces/IERC165.sol'
-    ]
+      'src/interfaces/IERC165.sol',
+    ],
   });
+  deployment.contracts.NairaTagRegistry.verified = true;
+  deployment.contracts.NairaTagRegistry.guid = regVer.guid;
+  fs.writeFileSync(deployPath, JSON.stringify(deployment, null, 2), 'utf8');
 
   // 2. Verify NairaTagResolver
-  const resAddress = deployment.contracts.NairaTagResolver.address;
+  const resAddress = deployment.contracts.NairaTagResolver?.address;
+  if (!resAddress) throw new Error('NairaTagResolver address missing in deployments/bsc-mainnet.json');
+
   const resConstructorArgs = encodeAbiParameters(
     parseAbiParameters('address registry'),
     [regAddress]
   );
-  await verifyContract({
+  const resVer = await verifyContract({
     apiKey,
     address: resAddress,
     contractName: 'src/NairaTagResolver.sol:NairaTagResolver',
@@ -143,18 +166,23 @@ async function main() {
       'src/NairaTagResolver.sol',
       'src/interfaces/INairaTagResolver.sol',
       'src/interfaces/INairaTagRegistry.sol',
-      'src/interfaces/IERC165.sol'
+      'src/interfaces/IERC165.sol',
     ],
-    constructorArgs: resConstructorArgs
+    constructorArgs: resConstructorArgs,
   });
+  deployment.contracts.NairaTagResolver.verified = true;
+  deployment.contracts.NairaTagResolver.guid = resVer.guid;
+  fs.writeFileSync(deployPath, JSON.stringify(deployment, null, 2), 'utf8');
 
   // 3. Verify NairaTagAgentIDActivation
-  const actAddress = deployment.contracts.NairaTagAgentIDActivation.address;
+  const actAddress = deployment.contracts.NairaTagAgentIDActivation?.address;
+  if (!actAddress) throw new Error('NairaTagAgentIDActivation address missing in deployments/bsc-mainnet.json');
+
   const actConstructorArgs = encodeAbiParameters(
     parseAbiParameters('address registry, address agentIdContract'),
-    [regAddress, '0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F']
+    [regAddress, OFFICIAL_AGENT_ID]
   );
-  await verifyContract({
+  const actVer = await verifyContract({
     apiKey,
     address: actAddress,
     contractName: 'src/NairaTagAgentIDActivation.sol:NairaTagAgentIDActivation',
@@ -162,20 +190,30 @@ async function main() {
       'src/NairaTagAgentIDActivation.sol',
       'src/interfaces/INairaTagAgentIDActivation.sol',
       'src/interfaces/INairaTagRegistry.sol',
+      'src/interfaces/INairaTagResolver.sol',
       'src/interfaces/IBinanceAgentID.sol',
-      'src/interfaces/IERC165.sol'
+      'src/interfaces/IERC165.sol',
     ],
-    constructorArgs: actConstructorArgs
+    constructorArgs: actConstructorArgs,
   });
+  deployment.contracts.NairaTagAgentIDActivation.verified = true;
+  deployment.contracts.NairaTagAgentIDActivation.guid = actVer.guid;
+  fs.writeFileSync(deployPath, JSON.stringify(deployment, null, 2), 'utf8');
 
   console.log('\nAll 3 contracts verified successfully on BscScan!');
 }
 
 if (require.main === module) {
   main().catch(err => {
-    console.error('Fatal verification error:', err.message);
+    console.error('\nFatal verification error:\n', err.message);
     process.exit(1);
   });
 }
 
-module.exports = { verifyContract };
+module.exports = {
+  verifyContract,
+  COMPILER_VERSION,
+  EVM_VERSION,
+  OPTIMIZER_RUNS,
+  OFFICIAL_AGENT_ID,
+};

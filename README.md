@@ -155,3 +155,31 @@ bag doctor
 # Run the agent locally
 bag dev
 ```
+
+---
+
+## 6. BNB Smart Chain Mainnet Deployment (`Chain ID: 56`)
+
+The deployment stack for BNB Smart Chain Mainnet deploys NairaTag's sovereign naming registry, multi-coin resolver, and the official SPACE ID Agent ID on-chain activation contract.
+
+### Core Contracts to Deploy
+
+1. **`NairaTagRegistry`**: Canonical namespace registry (NTS-100 normalization, anti-squatting 1-tag limit).
+2. **`NairaTagResolver`**: Multi-coin, text metadata, and forward/reverse address resolution.
+3. **`NairaTagAgentIDActivation`**: On-chain verification and sovereign tag binding for official SPACE ID Agent ID holders (`0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F`).
+
+### Preflight & Deployment Commands
+
+```bash
+# 1. Inspect prerequisites, derive deployer, check gas price & balance
+node script/preflight-mainnet.cjs
+
+# 2. Deploy contracts (requires CONFIRM_MAINNET_BROADCAST=true)
+CONFIRM_MAINNET_BROADCAST=true node script/deploy-bsc-mainnet.cjs
+
+# 3. Verify all 3 contracts on BscScan
+node script/verify-mainnet-contracts.cjs
+```
+
+For comprehensive details on safety gates, atomic resumption, and compiler settings, see [BNB Mainnet Deployment Guide](docs/bnb-mainnet-deployment-guide.md).
+

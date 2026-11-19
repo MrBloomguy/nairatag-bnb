@@ -11,7 +11,9 @@ async function verifyContract({
   contractName,
   sourceFiles,
   constructorArgs = '',
-  compilerVersion = 'v0.8.38+commit.1835d247'
+  compilerVersion = 'v0.8.24+commit.e11b9ed9',
+  evmVersion = 'cancun',
+  optimizerRuns = 200,
 }) {
   const basePath = path.resolve(__dirname, '..');
   const sources = {};
@@ -28,8 +30,9 @@ async function verifyContract({
     settings: {
       optimizer: {
         enabled: true,
-        runs: 200
+        runs: optimizerRuns
       },
+      evmVersion: evmVersion,
       outputSelection: {
         '*': {
           '*': ['abi', 'evm.bytecode', 'evm.deployedBytecode', 'metadata']
@@ -61,69 +64,62 @@ async function verifyContract({
 
   const data = await resp.json();
   if (data.status !== '1') {
-    if (data.result && data.result.toLowerCase().includes('already verified')) {
-      console.log(` -> ${contractName} is ALREADY VERIFIED on BscScan.`);
-      return true;
-    }
-    throw new Error(`Verification submission failed for ${contractName}: ${JSON.stringify(data)}`);
+    throw new Error(`Verification submission failed: ${data.message} - ${data.result}`);
   }
 
   const guid = data.result;
-  console.log(` -> Submission accepted. GUID: ${guid}`);
-  console.log(' -> Polling verification status...');
+  console.log(`Submitted successfully! GUID: ${guid}`);
+  console.log('Polling verification status on BscScan Testnet...');
 
-  const statusUrl = `https://api.etherscan.io/v2/api?chainid=97&module=contract&action=checkverifystatus&guid=${guid}&apikey=${apiKey}`;
+  for (let attempt = 1; attempt <= 30; attempt++) {
+    await sleep(5000);
+    const checkUrl = `https://api.etherscan.io/v2/api?chainid=97&module=contract&action=checkverifystatus&guid=${guid}&apikey=${apiKey}`;
+    const checkResp = await fetch(checkUrl);
+    const checkData = await checkResp.json();
 
-  for (let attempt = 1; attempt <= 15; attempt++) {
-    await sleep(4000);
-    const sResp = await fetch(statusUrl);
-    const sData = await sResp.json();
-    console.log(`    [Attempt ${attempt}] Status: ${sData.result}`);
-    if (sData.result === 'Pass - Verified' || (typeof sData.result === 'string' && sData.result.includes('Already Verified'))) {
-      console.log(` -> 🎉 ${contractName} VERIFICATION PASSED!`);
-      return true;
-    }
-    if (sData.result && sData.result.includes('Fail')) {
-      throw new Error(`Verification FAILED for ${contractName}: ${sData.result}`);
+    if (checkData.result === 'Pass - Verified' || checkData.result.includes('Already Verified')) {
+      console.log(`SUCCESS: ${contractName} is verified on BscScan Testnet!`);
+      return { verified: true, guid };
+    } else if (checkData.result.includes('Pending in queue')) {
+      process.stdout.write('.');
+    } else {
+      throw new Error(`Verification failed for ${contractName}: ${checkData.result}`);
     }
   }
 
-  throw new Error(`Verification timed out for ${contractName} (GUID: ${guid})`);
+  throw new Error(`Verification timeout after 150 seconds for GUID: ${guid}`);
 }
 
 async function main() {
-  console.log('====================================================');
-  console.log('   NAIRATAG PROTOCOL — BSCSCAN SOURCE VERIFICATION');
-  console.log('====================================================');
-
   const envPath = path.resolve(__dirname, '../.env');
   const envContent = fs.readFileSync(envPath, 'utf8');
   const keyMatch = envContent.match(/BSCSCAN_API_KEY=(.+)/);
-  if (!keyMatch) {
-    throw new Error('BSCSCAN_API_KEY missing in .env');
-  }
+  if (!keyMatch) throw new Error('BSCSCAN_API_KEY missing in .env');
   const apiKey = keyMatch[1].trim();
 
+  const deployPath = path.resolve(__dirname, '../deployments/bsc-testnet.json');
+  const deployment = JSON.parse(fs.readFileSync(deployPath, 'utf8'));
+
   // 1. Verify NairaTagRegistry
+  const regAddress = deployment.contracts.NairaTagRegistry.address;
   await verifyContract({
     apiKey,
-    address: '0x73434d121f46e188b7f12ef048062e79e5119cc3',
+    address: regAddress,
     contractName: 'src/NairaTagRegistry.sol:NairaTagRegistry',
     sourceFiles: [
       'src/NairaTagRegistry.sol',
       'src/interfaces/INairaTagRegistry.sol',
       'src/interfaces/INairaTagResolver.sol',
       'src/interfaces/IERC165.sol'
-    ],
-    constructorArgs: ''
+    ]
   });
 
   // 2. Verify NairaTagResolver
-  // Constructor argument is registry address padded to 32 bytes
-  const resolverArg = '00000000000000000000000073434d121f46e188b7f12ef048062e79e5119cc3';
+  const resAddress = deployment.contracts.NairaTagResolver.address;
+  const resConstructorArgs = regAddress.toLowerCase().replace('0x', '').padStart(64, '0');
   await verifyContract({
     apiKey,
-    address: '0x2ce440b6c63dc5e1128ab75ddac4d5da850de869',
+    address: resAddress,
     contractName: 'src/NairaTagResolver.sol:NairaTagResolver',
     sourceFiles: [
       'src/NairaTagResolver.sol',
@@ -131,17 +127,17 @@ async function main() {
       'src/interfaces/INairaTagRegistry.sol',
       'src/interfaces/IERC165.sol'
     ],
-    constructorArgs: resolverArg
+    constructorArgs: resConstructorArgs
   });
 
-  console.log('\n====================================================');
-  console.log('   ✅ ALL CONTRACTS SUCCESSFULLY VERIFIED ON BSCSCAN');
-  console.log('====================================================');
-  console.log('NairaTagRegistry: https://testnet.bscscan.com/address/0x73434d121f46e188b7f12ef048062e79e5119cc3#code');
-  console.log('NairaTagResolver: https://testnet.bscscan.com/address/0x2ce440b6c63dc5e1128ab75ddac4d5da850de869#code');
+  console.log('\nAll testnet contracts verified on BscScan!');
 }
 
-main().catch(err => {
-  console.error('\n❌ VERIFICATION SCRIPT FAILED:', err);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch(err => {
+    console.error('Fatal verification error:', err.message);
+    process.exit(1);
+  });
+}
+
+module.exports = { verifyContract };
