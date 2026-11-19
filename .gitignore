@@ -1,7 +1,7 @@
-out/
-cache/
-broadcast/
-lib/
+/out/
+/cache/
+/broadcast/
+/lib/
 .env
 .env*.local
 .studio/
