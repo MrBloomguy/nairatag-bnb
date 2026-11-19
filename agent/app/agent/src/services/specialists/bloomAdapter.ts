@@ -198,6 +198,7 @@ export interface BloomSettlementData {
 
 export interface BloomTestSeam {
   client?: PublicClient;
+  walletClient?: any;
   txHash?: Hash;
   receipt?: TransactionReceipt;
   transaction?: {
@@ -829,23 +830,43 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
         const studioAddr = getAddress(studioWallet.address);
         if (studioAddr.toLowerCase() === sender.toLowerCase()) {
           // Wrap studio wallet as a Viem Account that uses the studio keystore/signer
+          // and normalizes @bnbagent/sdk EVMWalletProvider return types into Viem's expected strings
           activeSignerAccount = toAccount({
             address: studioAddr,
             async signTransaction(tx: any) {
               if (typeof studioWallet!.signTransaction === "function") {
-                return await studioWallet!.signTransaction(tx);
+                const res = await studioWallet!.signTransaction(tx);
+                if (typeof res === "string") return res as `0x${string}`;
+                if (res && typeof res === "object" && "rawTransaction" in res) {
+                  return (res as any).rawTransaction as `0x${string}`;
+                }
+                throw new Error("Studio wallet signTransaction returned invalid format: expected hex string or rawTransaction property");
               }
               throw new Error("Studio wallet does not support signTransaction");
             },
             async signMessage({ message }: any) {
               if (typeof studioWallet!.signMessage === "function") {
-                return await studioWallet!.signMessage(message);
+                const res = await studioWallet!.signMessage(message);
+                if (typeof res === "string") return res as `0x${string}`;
+                if (res && typeof res === "object" && "signature" in res) {
+                  return (res as any).signature as `0x${string}`;
+                }
+                throw new Error("Studio wallet signMessage returned invalid format: expected hex string or signature property");
               }
               throw new Error("Studio wallet does not support signMessage");
             },
             async signTypedData(typedData: any) {
               if (typeof studioWallet!.signTypedData === "function") {
-                return await studioWallet!.signTypedData(typedData);
+                const res = await (studioWallet as any)!.signTypedData(
+                  typedData.domain,
+                  typedData.types,
+                  typedData.message
+                );
+                if (typeof res === "string") return res as `0x${string}`;
+                if (res && typeof res === "object" && "signature" in res) {
+                  return (res as any).signature as `0x${string}`;
+                }
+                throw new Error("Studio wallet signTypedData returned invalid format: expected hex string or signature property");
               }
               throw new Error("Studio wallet does not support signTypedData");
             },
@@ -944,11 +965,15 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
       }
 
       try {
-        const walletClient = createWalletClient({
-          account: activeSignerAccount,
-          chain: bscTestnet,
-          transport: http(this.defaultTestnetRpc),
-        });
+        const walletClient =
+          typeof bloomPayload.testSeam?.walletClient === "function"
+            ? bloomPayload.testSeam.walletClient(activeSignerAccount)
+            : bloomPayload.testSeam?.walletClient ??
+              createWalletClient({
+                account: activeSignerAccount,
+                chain: bscTestnet,
+                transport: http(this.defaultTestnetRpc),
+              });
 
         let txHash: Hash;
         if (token.isNative) {

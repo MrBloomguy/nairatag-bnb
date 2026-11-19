@@ -657,7 +657,11 @@ test("4.10. Bloom: Wallet Authorization Binding (Unapproved Key Substitution Blo
     assert.equal(res.error?.code, "WALLET_AUTHORIZATION_MISMATCH");
     assert.match(res.error?.message || "", /does not match authorized sender/i);
   } finally {
-    process.env.BNB_TESTNET_PRIVATE_KEY = origKey;
+    if (origKey !== undefined) {
+      process.env.BNB_TESTNET_PRIVATE_KEY = origKey;
+    } else {
+      delete process.env.BNB_TESTNET_PRIVATE_KEY;
+    }
   }
 });
 
@@ -728,7 +732,126 @@ test("4.12. Bloom: Studio Wallet Matches Authorized Sender but Conflicting Envir
     assert.equal(res.error?.code, "WALLET_AUTHORIZATION_MISMATCH");
     assert.match(res.error?.message || "", /conflicting private key substitution is prohibited/i);
   } finally {
-    process.env.BNB_TESTNET_PRIVATE_KEY = origKey;
+    if (origKey !== undefined) {
+      process.env.BNB_TESTNET_PRIVATE_KEY = origKey;
+    } else {
+      delete process.env.BNB_TESTNET_PRIVATE_KEY;
+    }
+  }
+});
+
+test("4.13. Bloom: Positive Studio-Wallet Live Signing & Broadcast via Viem Integration", async (t) => {
+  const adapter = new BloomAdapter();
+  const authorizedUser = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
+  const recipient = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
+  const mockTxHash = "0xaa11bb22cc33dd44ee55ff6677889900112233445566778899aabbccddeeff00";
+  const usdcAddress = "0x64544969ed7EBf5f083679233325356EbE738930";
+
+  const origKey = process.env.BNB_TESTNET_PRIVATE_KEY;
+  try {
+    delete process.env.BNB_TESTNET_PRIVATE_KEY;
+
+    let signTxCalled = false;
+    let signedPayloadReceived = null;
+
+    // Studio wallet mock returning the exact object format from @bnbagent/sdk EVMWalletProvider:
+    // { rawTransaction: '0x...', hash: '0x...', r: '...', s: '...', v: '...' }
+    const studioWallet = {
+      address: authorizedUser,
+      signTransaction: async (tx) => {
+        signTxCalled = true;
+        signedPayloadReceived = tx;
+        return {
+          rawTransaction: "0x02f87061a4c9b2",
+          hash: mockTxHash,
+          r: "0x1234",
+          s: "0x5678",
+          v: 27n,
+        };
+      },
+      signMessage: async () => ({ signature: "0xmsgsig" }),
+      signTypedData: async () => ({ signature: "0xtypedsig" }),
+    };
+
+    // Client mock that intercepts broadcast and receipt fetching
+    const mockClient = {
+      sendRawTransaction: async ({ serializedTransaction }) => {
+        assert.equal(serializedTransaction, "0x02f87061a4c9b2");
+        return mockTxHash;
+      },
+      waitForTransactionReceipt: async ({ hash }) => {
+        assert.equal(hash, mockTxHash);
+        return {
+          status: "success",
+          blockNumber: 42002000n,
+          transactionHash: mockTxHash,
+          from: authorizedUser,
+          to: usdcAddress,
+          gasUsed: 45000n,
+          logs: [
+            {
+              address: usdcAddress,
+              topics: [
+                "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+                "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+                "0x00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8",
+              ],
+              data: "0x0000000000000000000000000000000000000000000000001bc16d674ec80000",
+              logIndex: 0n,
+              transactionIndex: 0n,
+            },
+          ],
+        };
+      },
+    };
+
+    const res = await adapter.execute(
+      {
+        amount: "2.0",
+        currency: "USDC",
+        recipient,
+        sender: authorizedUser,
+        authorization: { isAuthorized: true, signature: "0xvalid" },
+        testSeam: {
+          client: mockClient,
+          studioWallet,
+          walletClient: (account) => ({
+            account,
+            writeContract: async (args) => {
+              // Verify the account properly delegates to studioWallet and normalizes the output
+              const raw = await account.signTransaction({
+                to: args.address,
+                data: "0xa9059cbb...",
+                chainId: 97,
+              });
+              assert.equal(typeof raw, "string");
+              assert.ok(raw.startsWith("0x"));
+              assert.equal(raw, "0x02f87061a4c9b2");
+              return mockTxHash;
+            },
+          }),
+        },
+      },
+      { transport: "live" }
+    );
+
+    if (!res.success) {
+      console.log("DEBUG RES 4.13 ERROR:", res.error);
+    }
+    assert.equal(res.success, true);
+    assert.equal(res.paymentCompleted, true);
+    assert.equal(signTxCalled, true);
+    assert.ok(signedPayloadReceived);
+    assert.equal(res.onChainReceipt?.status, "success");
+    assert.equal(res.onChainReceipt?.transactionHash, mockTxHash);
+    assert.equal(res.data?.sender.toLowerCase(), authorizedUser.toLowerCase());
+    assert.match(res.metadata.source, /studio_runtime_wallet/i);
+  } finally {
+    if (origKey !== undefined) {
+      process.env.BNB_TESTNET_PRIVATE_KEY = origKey;
+    } else {
+      delete process.env.BNB_TESTNET_PRIVATE_KEY;
+    }
   }
 });
 
