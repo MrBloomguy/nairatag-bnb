@@ -95,6 +95,7 @@ import {
 } from "./deliveryPolicy.js";
 import * as signing from "./signing.js";
 import { READ_TOOL_CATALOG, type ReadToolName } from "./readToolCatalog.js";
+import { verifyAgentId } from "./services/agentIdVerifier.js";
 
 const APP_NAME = "agent";
 function safeLogText(value: unknown): string {
@@ -661,6 +662,27 @@ export function buildMcpServer(
     roConfig("network_info"),
     async (a: ReadArgs<"network_info">) =>
       toolResult(await cr.networkInfo(a.network ?? defaultNetwork())),
+  );
+  server.registerTool(
+    "verify_agent_id",
+    roConfig("verify_agent_id"),
+    async (a: ReadArgs<"verify_agent_id">) => {
+      let targetAddress = a.address;
+      if (!targetAddress) {
+        try {
+          const w = (await cr.walletInfo()) as { address?: string } | undefined;
+          targetAddress = w?.address;
+        } catch {
+          // fallback
+        }
+      }
+      return toolResult(
+        await verifyAgentId({
+          address: targetAddress ?? "",
+          network: (a.network as "bsc-mainnet" | "bsc-testnet") ?? "bsc-mainnet",
+        }),
+      );
+    },
   );
 
   return server;

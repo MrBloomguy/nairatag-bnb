@@ -97,6 +97,17 @@ export const READ_TOOL_CATALOG = {
     description: "Read the network-wide in-flight ERC-8183 job count.",
     inputSchema: { network },
   },
+  verify_agent_id: {
+    description:
+      "Verify whether an address holds an official Binance/SPACE ID Agent ID (BEP-721 Soulbound Token). Defaults to the agent's own wallet.",
+    inputSchema: {
+      address: optionalAddress,
+      network: z
+        .enum(["bsc-mainnet", "bsc-testnet"])
+        .optional()
+        .describe("Target network ('bsc-mainnet' or 'bsc-testnet', defaults to 'bsc-mainnet' where official contract is deployed)"),
+    },
+  },
 } as const;
 
 export type ReadToolName = keyof typeof READ_TOOL_CATALOG;

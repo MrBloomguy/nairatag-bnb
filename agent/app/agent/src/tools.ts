@@ -31,6 +31,7 @@ import { loadStudioToml } from "@bnbagent/studio-runtime/config";
 import { tool, type ToolSet } from "ai";
 import { z } from "zod";
 import { READ_TOOL_CATALOG } from "./readToolCatalog.js";
+import { verifyAgentId } from "./services/agentIdVerifier.js";
 
 /**
  * The project-wide default network (`[network].default`) — tool calls that
@@ -117,6 +118,27 @@ export const LLM_READ_TOOLS: ToolSet = {
     inputSchema: z.object(READ_TOOL_CATALOG.job_list.inputSchema),
     execute: async ({ limit, mine, network }) =>
       cr.jobList({ limit, mine, network: network ?? defaultNetwork() }),
+  }),
+
+  // --- Binance / SPACE ID Agent ID Verification (Identity is not Authority) ---
+  verify_agent_id: tool({
+    description: READ_TOOL_CATALOG.verify_agent_id.description,
+    inputSchema: z.object(READ_TOOL_CATALOG.verify_agent_id.inputSchema),
+    execute: async ({ address, network }) => {
+      let targetAddress = address;
+      if (!targetAddress) {
+        try {
+          const w = (await cr.walletInfo()) as { address?: string } | undefined;
+          targetAddress = w?.address;
+        } catch {
+          // fallback if wallet info unavailable
+        }
+      }
+      return verifyAgentId({
+        address: targetAddress ?? "",
+        network: (network as "bsc-mainnet" | "bsc-testnet") ?? "bsc-mainnet",
+      });
+    },
   }),
   // job_count: ...        // network-wide stat — usually noise
 

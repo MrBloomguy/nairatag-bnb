@@ -20,13 +20,46 @@ All core contracts are compiled, tested, deployed, and **publicly verified (with
 
 ---
 
-## 2. Architecture Boundaries
+## 2. Architecture: NairaTag Identity vs Binance Agent ID
 
-The architecture preserves clear boundaries:
-- **NairaTag Identity**: Maps a normalized human-readable tag (`₦tag`) to an owner on BNB Chain.
-- **Binance Agent ID**: Verified via `IBinanceAgentID.balanceOf(address)` against the official BEP-721 Soulbound registry.
-- **Identity is not Authority**: Holding an Agent ID or NairaTag verifies identity tier; it does **not** grant unrestricted contract execution rights or payment authority.
-- **BNB Agent Studio Runtime**: Autonomous agent runtime powered by `@bnbagent/studio-runtime` exposing composable public faces (A2A on port 9000, MCP on port 8000/mcp, and x402/B402 HTTP routes).
+NairaTag agents possess two complementary identity layers:
+
+```
+┌────────────────────────────────────────────────────────┐
+│                   NAIRATAG AGENT                       │
+├────────────────────────────┬───────────────────────────┤
+│    Native Sovereign ID     │  External Credential ID   │
+│       (NairaTag Tag)       │     (Binance Agent ID)    │
+│  e.g. ₦bloom / @nairatag   │   SPACE ID AI NFT (0x60b) │
+│     BSC Testnet / Mainnet  │         BSC Mainnet       │
+│  Maps tag -> EVM address   │  balanceOf(address) > 0   │
+└────────────────────────────┴───────────────────────────┘
+```
+
+### Identity Comparison
+
+| Property | NairaTag Protocol Identity (`₦tag`) | Binance / SPACE ID Agent ID |
+|---|---|---|
+| **Form** | Human-readable sovereign tag (`₦tag` / `@name`) | BEP-721 Soulbound Token (Symbol: `AI`) |
+| **Contract** | `NairaTagRegistry` (`0x73434d12...`) | `SPACE ID Agent ID` (`0x60b9262456de...`) |
+| **Network** | BSC Testnet (`97`) & BSC Mainnet (`56`) | BSC Mainnet (`56`) only |
+| **What it Proves** | Sovereign address mapping, payment routing & escrow endpoint | External developer/agent verification credential |
+| **Verification Method** | `registry.ownerOf(node)` / `resolver.addr(node)` | `balanceOf(address) > 0` |
+| **Role in Agent Economy**| Transaction routing, pay-to-tag, escrow payouts | Credential tier gate (`verified` vs `unverified`) |
+
+### Core Rule: Identity is not Authority
+- Holding an Agent ID verifies that an entity completed Binance / SPACE ID identity onboarding.
+- Holding an Agent ID does **not**:
+  - Authorize transfers or approvals of funds.
+  - Grant unrestricted contract permissions.
+  - Override NairaTag namespace ownership or transfer tags.
+  - Bypass ERC-8183 / NairaTag escrow delivery and dispute conditions.
+  - Automatically execute transactions without explicit signing logic.
+
+### Why Testnet Returns `not_deployed`
+The official SPACE ID Agent ID contract (`0x60b9262456de011f7d15a54cdd8c48baaa8b022f`) is deployed exclusively on **BSC Mainnet (Chain ID 56)**.
+- On **BSC Testnet (Chain ID 97)**: `eth_getCode` returns `0x`. Rather than deploying an unofficial substitute or faking verification, `verify_agent_id` returns `verificationTier: "not_deployed"` and `contractAvailable: false`.
+- On **BSC Mainnet (Chain ID 56)**: `verify_agent_id` verifies contract bytecode (17,514 bytes) and calls `balanceOf(address)` via viem public client, returning `verified` or `unverified`.
 
 ---
 
@@ -80,8 +113,14 @@ nairatag-bnb/
         └── src/
             ├── sellerCore.ts            # ERC-8183 seller logic & delivery
             ├── signing.ts               # Fixed-code signing path (never LLM-callable)
-            ├── tools.ts                 # Read-only chain tools for the LLM
-            └── dualMain.ts              # A2A + MCP entrypoint
+            ├── tools.ts                 # Read-only chain tools (includes verify_agent_id)
+            ├── readToolCatalog.ts       # Tool descriptions & Zod schemas
+            ├── mcpMain.ts               # Streamable-HTTP MCP server exposing read tools
+            ├── dualMain.ts              # A2A + MCP entrypoint
+            └── services/
+                └── agentIdVerifier.ts   # Official SPACE ID Agent ID verifier
+    └── test/
+        └── agentIdVerifier.test.mjs     # 10 comprehensive unit & integration tests
 ```
 
 ---
