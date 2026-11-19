@@ -148,13 +148,36 @@ export const DEPLOYED_CONTRACTS = {
   "bsc-testnet": {
     registry: "0x73434d121f46e188b7f12ef048062e79e5119cc3" as `0x${string}`,
     resolver: "0x2ce440b6c63dc5e1128ab75ddac4d5da850de869" as `0x${string}`,
+    activation: (process.env.NAIRATAG_ACTIVATION_ADDRESS_TESTNET || "0x0000000000000000000000000000000000000000") as `0x${string}`,
   },
   "bsc-mainnet": {
     // Space reserved for BSC Mainnet deployment
-    registry: "0x0000000000000000000000000000000000000000" as `0x${string}`,
-    resolver: "0x0000000000000000000000000000000000000000" as `0x${string}`,
+    registry: (process.env.NAIRATAG_REGISTRY_ADDRESS || "0x0000000000000000000000000000000000000000") as `0x${string}`,
+    resolver: (process.env.NAIRATAG_RESOLVER_ADDRESS || "0x0000000000000000000000000000000000000000") as `0x${string}`,
+    activation: (process.env.NAIRATAG_ACTIVATION_ADDRESS || "0x0000000000000000000000000000000000000000") as `0x${string}`,
   },
 } as const;
+
+export type TagActivationValidity =
+  | "VALID"
+  | "NOT_ACTIVATED"
+  | "TAG_DOES_NOT_EXIST"
+  | "TAG_OWNERSHIP_CHANGED"
+  | "AGENT_ID_LOST"
+  | "VOLUNTARILY_DEACTIVATED"
+  | "CONTRACT_UNAVAILABLE";
+
+export interface OnChainActivationResult {
+  node: `0x${string}`;
+  tag: string;
+  holder?: string;
+  isActive: boolean;
+  validityStatus: TagActivationValidity;
+  activatedAt?: string;
+  historicalCount?: number;
+  contractAddress: string;
+  network: SupportedAgentIdNetwork;
+}
 
 // ABIs
 const REGISTRY_ABI = parseAbi([
@@ -169,6 +192,13 @@ const RESOLVER_ABI = parseAbi([
   "function text(bytes32 node, string key) view returns (string)",
   "function paymentEndpoint(bytes32 node) view returns (string)",
   "function name(bytes32 node) view returns (string)",
+]);
+
+const ACTIVATION_ABI = parseAbi([
+  "function checkValidity(bytes32 node) view returns (uint8)",
+  "function getActivation(bytes32 node) view returns (address holder, uint64 activatedAt, uint64 historicalCount, bool isActive, uint8 liveStatus, uint8 lastDeactivationReason)",
+  "function primaryActivatedNodeOf(address holder) view returns (bytes32)",
+  "function totalActiveActivations() view returns (uint256)",
 ]);
 
 // ==========================================
@@ -422,6 +452,103 @@ export class AgentProfileService {
       };
     } catch {
       return null;
+    }
+  }
+
+  /**
+   * Verifies the live on-chain activation status of a sovereign tag in
+   * NairaTagAgentIDActivation.sol.
+   */
+  public static async verifyTagActivationOnChain(
+    rawTag: string,
+    network: SupportedAgentIdNetwork = "bsc-mainnet",
+    client?: PublicClient
+  ): Promise<OnChainActivationResult> {
+    const canonicalName = normalizeTag(rawTag);
+    const tag = formatCanonicalTag(canonicalName);
+    const node = computeTagNode(canonicalName);
+
+    const contracts = DEPLOYED_CONTRACTS[network];
+    const activationAddr = contracts?.activation;
+
+    if (!activationAddr || activationAddr === "0x0000000000000000000000000000000000000000") {
+      return {
+        node,
+        tag,
+        isActive: false,
+        validityStatus: "CONTRACT_UNAVAILABLE",
+        contractAddress: activationAddr || "0x0000000000000000000000000000000000000000",
+        network,
+      };
+    }
+
+    const pubClient =
+      client ??
+      createPublicClient({
+        chain: network === "bsc-mainnet" ? bsc : bscTestnet,
+        transport: http(),
+      });
+
+    try {
+      const bytecode = await pubClient.getBytecode({ address: activationAddr });
+      if (!bytecode || bytecode === "0x") {
+        return {
+          node,
+          tag,
+          isActive: false,
+          validityStatus: "CONTRACT_UNAVAILABLE",
+          contractAddress: activationAddr,
+          network,
+        };
+      }
+
+      const [validityNum, actData] = await Promise.all([
+        pubClient.readContract({
+          address: activationAddr,
+          abi: ACTIVATION_ABI,
+          functionName: "checkValidity",
+          args: [node],
+        }) as Promise<number>,
+        pubClient.readContract({
+          address: activationAddr,
+          abi: ACTIVATION_ABI,
+          functionName: "getActivation",
+          args: [node],
+        }) as Promise<[string, bigint, bigint, boolean, number, number]>,
+      ]);
+
+      const validityMap: TagActivationValidity[] = [
+        "VALID",
+        "NOT_ACTIVATED",
+        "TAG_DOES_NOT_EXIST",
+        "TAG_OWNERSHIP_CHANGED",
+        "AGENT_ID_LOST",
+        "VOLUNTARILY_DEACTIVATED",
+      ];
+
+      const validityStatus = validityMap[validityNum] ?? "NOT_ACTIVATED";
+      const [holder, activatedAtBig, countBig, isActive] = actData;
+
+      return {
+        node,
+        tag,
+        holder: holder !== "0x0000000000000000000000000000000000000000" ? getAddress(holder) : undefined,
+        isActive,
+        validityStatus,
+        activatedAt: activatedAtBig > 0n ? new Date(Number(activatedAtBig) * 1000).toISOString() : undefined,
+        historicalCount: Number(countBig),
+        contractAddress: activationAddr,
+        network,
+      };
+    } catch {
+      return {
+        node,
+        tag,
+        isActive: false,
+        validityStatus: "NOT_ACTIVATED",
+        contractAddress: activationAddr,
+        network,
+      };
     }
   }
 }

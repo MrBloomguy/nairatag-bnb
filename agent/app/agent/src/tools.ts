@@ -33,7 +33,10 @@ import { z } from "zod";
 import { READ_TOOL_CATALOG } from "./readToolCatalog.js";
 import { verifyAgentId } from "./services/agentIdVerifier.js";
 import { globalSpecialistDirectory } from "./services/specialistDirectory.js";
-import { globalNairaTagOrchestrator } from "./services/orchestratorCore.js";
+import {
+  globalNairaTagOrchestrator,
+  OrchestrationPlanSchema,
+} from "./services/orchestratorCore.js";
 import { globalTaskDelegator } from "./services/taskDelegator.js";
 
 /**
@@ -192,21 +195,41 @@ export const LLM_READ_TOOLS: ToolSet = {
   execute_orchestration_plan: tool({
     description: READ_TOOL_CATALOG.execute_orchestration_plan.description,
     inputSchema: z.object(READ_TOOL_CATALOG.execute_orchestration_plan.inputSchema),
-    execute: async ({ plan_json, approver_address, user_affirmation, signature }) => {
-      let plan;
+    execute: async ({
+      plan_json,
+      approver_address,
+      signature,
+      nonce,
+      expires_at,
+      chain_id,
+      auth_type,
+      user_affirmation,
+    }) => {
+      let rawPlan;
       try {
-        plan = JSON.parse(plan_json);
+        rawPlan = JSON.parse(plan_json);
       } catch (e: any) {
         return { error: `Invalid plan_json: failed to parse JSON: ${e.message}` };
       }
 
+      let plan;
+      try {
+        plan = OrchestrationPlanSchema.parse(rawPlan);
+      } catch (e: any) {
+        return { error: `Invalid plan schema (SEC-03): ${e.message}` };
+      }
+
       const authRequest =
-        approver_address && user_affirmation
+        approver_address && signature && typeof nonce === "number" && typeof expires_at === "number"
           ? {
               planId: plan.planId,
               approvedBy: approver_address,
-              userAffirmation: user_affirmation,
               signature,
+              nonce,
+              expiresAt: expires_at,
+              chainId: chain_id,
+              type: auth_type,
+              userAffirmation: user_affirmation,
             }
           : undefined;
 

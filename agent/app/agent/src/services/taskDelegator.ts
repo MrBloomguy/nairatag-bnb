@@ -1,30 +1,93 @@
 /**
- * NairaTag Task Delegator & Interactive Authorization Gate (Step 9)
+ * NairaTag Task Delegator & Interactive Cryptographic Authorization Gate (Phase 1 Remediation)
  *
- * Implements the outbound A2A/MCP task delegation engine and explicit user
- * authorization gate for the NairaTag Orchestrator (₦NAIRATAG).
+ * Implements outbound task delegation, durable replay protection, and cryptographically
+ * verified wallet-bound authorization for the NairaTag Orchestrator (₦NAIRATAG).
  *
- * ARCHITECTURAL PRINCIPLES:
+ * ARCHITECTURAL REQUIREMENTS:
  * 1. "Identity is not Authority": Financial actions (settlements, escrow locks/releases)
- *    CANNOT be executed autonomously. They strictly require explicit, interactive user consent.
- * 2. Cryptographic Replay Protection: A plan can only be authorized and executed once.
- * 3. Transparent Delegation Receipts: Every executed task returns a verifiable receipt
- *    recording target specialist, capability executed, latency, and returned deliverable.
- * 4. Dual Transport (A2A JSON-RPC 2.0 & Sandbox Fallback): Dispatches tasks to specialist
- *    agent endpoints while gracefully handling testing and sandbox scenarios.
+ *    CANNOT be executed autonomously. They strictly require explicit, interactive user consent
+ *    proven by an EIP-712 or EIP-191 cryptographic signature from the authorized wallet.
+ * 2. Cryptographic Replay & Anti-Tampering: Approval is strictly bound to:
+ *    planId, action, targetSpecialist, recipient, amount, token, chainId, monotonic nonce, and expiry.
+ *    Any altered parameter, expired timestamp, or reused nonce/planId is rejected.
+ * 3. Durable Storage: Replay protection survives server restarts, scale-to-zero wake-ups,
+ *    and multi-worker deployments via DurableExecutionStore.
+ * 4. Transparent Receipts: Every execution returns a structured, auditable DelegationReceipt.
  */
 
 import { randomUUID } from "node:crypto";
-import { getAddress, isAddress } from "viem";
-import type {
-  OrchestrationPlan,
-  PlanAuthorizationRequirement,
-  PlanDelegationTarget,
+import {
+  getAddress,
+  isAddress,
+  recoverMessageAddress,
+  recoverTypedDataAddress,
+  type Hex,
+} from "viem";
+import {
+  OrchestrationPlanSchema,
+  type OrchestrationPlan,
+  type PlanDelegationTarget,
 } from "./orchestratorCore.js";
+import {
+  DurableExecutionStore,
+  globalExecutionStore,
+} from "./durableExecutionStore.js";
 import {
   globalSpecialistDirectory,
   SpecialistAgentDirectory,
 } from "./specialistDirectory.js";
+
+// ==========================================
+// EIP-712 Typed Data Specifications (SEC-01)
+// ==========================================
+
+export const NAIRATAG_AUTH_DOMAIN = {
+  name: "NairaTag Task Authorization",
+  version: "1",
+  chainId: 56,
+} as const;
+
+export const NAIRATAG_AUTH_TYPES = {
+  NairaTagTaskAuthorization: [
+    { name: "planId", type: "string" },
+    { name: "action", type: "string" },
+    { name: "targetSpecialist", type: "string" },
+    { name: "recipient", type: "string" },
+    { name: "amount", type: "string" },
+    { name: "token", type: "string" },
+    { name: "chainId", type: "uint256" },
+    { name: "nonce", type: "uint256" },
+    { name: "expiresAt", type: "uint256" },
+  ],
+} as const;
+
+/**
+ * Builds the canonical plaintext message for EIP-191 personal_sign fallback.
+ */
+export function buildCanonicalAuthorizationMessage(params: {
+  planId: string;
+  action: string;
+  targetSpecialist: string;
+  recipient: string;
+  amount: string;
+  token: string;
+  chainId: number;
+  nonce: number;
+  expiresAt: number;
+}): string {
+  return [
+    "NairaTag Task Authorization",
+    `Plan ID: ${params.planId}`,
+    `Action: ${params.action}`,
+    `Target Specialist: ${params.targetSpecialist}`,
+    `Recipient: ${params.recipient}`,
+    `Amount: ${params.amount} ${params.token}`,
+    `Chain ID: ${params.chainId}`,
+    `Nonce: ${params.nonce}`,
+    `Expires: ${params.expiresAt}`,
+  ].join("\n");
+}
 
 // ==========================================
 // Authorization Request & Proof
@@ -33,9 +96,12 @@ import {
 export interface PlanAuthorizationRequest {
   planId: string;
   approvedBy: string; // EVM address of approving user / wallet
-  userAffirmation: string; // e.g. "CONFIRM_PAYMENT", "I authorize this transfer"
-  signature?: string; // Optional EIP-191 / EIP-712 signature
-  timestamp?: string;
+  signature: `0x${string}` | string; // REQUIRED cryptographic signature
+  nonce: number; // Monotonic per-approver integer
+  expiresAt: number; // Unix timestamp in seconds
+  chainId?: number; // Target chain ID (defaults to 56)
+  type?: "eip712" | "eip191";
+  userAffirmation?: string;
 }
 
 // ==========================================
@@ -60,7 +126,9 @@ export interface DelegationReceipt {
     approvedBy: string;
     spendingAmount?: string;
     spendingCurrency?: string;
-    userAffirmation: string;
+    nonce?: number;
+    expiresAt?: number;
+    signatureType?: "eip712" | "eip191";
     verifiedAgentIdTier?: string;
   };
 }
@@ -71,21 +139,31 @@ export interface DelegationReceipt {
 
 export class TaskDelegator {
   private directory: SpecialistAgentDirectory;
-  private executedPlans: Set<string> = new Set();
+  private store: DurableExecutionStore;
   private receipts: Map<string, DelegationReceipt> = new Map();
 
-  constructor(directory: SpecialistAgentDirectory = globalSpecialistDirectory) {
+  constructor(
+    directory: SpecialistAgentDirectory = globalSpecialistDirectory,
+    store: DurableExecutionStore = globalExecutionStore
+  ) {
     this.directory = directory;
+    this.store = store;
   }
 
   /**
-   * Verifies and applies explicit user authorization to a planned task.
-   * Enforces parameter integrity, caller match, and replay prevention.
+   * Cryptographically verifies user authorization for a planned financial task.
+   * Enforces:
+   * 1. Plan ID match
+   * 2. Replay protection (via persistent DurableExecutionStore)
+   * 3. Expiration window (current timestamp <= expiresAt)
+   * 4. Monotonic nonce progression (nonce > highestRecordedNonce)
+   * 5. Strict parameter binding (action, specialist, recipient, amount, token, chainId)
+   * 6. Cryptographic signature recovery (EIP-712 or EIP-191) matching approvedBy
    */
-  public authorizePlan(
+  public async authorizePlan(
     plan: OrchestrationPlan,
     authRequest: PlanAuthorizationRequest
-  ): { valid: boolean; error?: string; authorizedPlan?: OrchestrationPlan } {
+  ): Promise<{ valid: boolean; error?: string; authorizedPlan?: OrchestrationPlan }> {
     // 1. Verify plan ID match
     if (plan.planId !== authRequest.planId) {
       return {
@@ -94,8 +172,8 @@ export class TaskDelegator {
       };
     }
 
-    // 2. Replay check
-    if (this.executedPlans.has(plan.planId)) {
+    // 2. Replay check via persistent store
+    if (this.store.hasPlan(plan.planId)) {
       return {
         valid: false,
         error: `Plan ${plan.planId} has already been executed. Replay authorization is rejected.`,
@@ -119,22 +197,143 @@ export class TaskDelegator {
       };
     }
 
-    // 4. Affirmation check
-    if (!authRequest.userAffirmation || authRequest.userAffirmation.trim().length === 0) {
+    // 4. Cryptographic signature presence check
+    if (!authRequest.signature || typeof authRequest.signature !== "string") {
       return {
         valid: false,
-        error: "Missing user affirmation: explicit authorization text is required.",
+        error: "Missing cryptographic signature: financial actions strictly require a valid wallet signature.",
       };
     }
 
-    // 5. Clone and update plan with authorization state
+    const sigHex = authRequest.signature.trim();
+    if (!/^0x[0-9a-fA-F]{130,132}$/.test(sigHex)) {
+      return {
+        valid: false,
+        error: "Invalid cryptographic signature format: must be 65-byte hex string (0x...).",
+      };
+    }
+
+    // 5. Expiration check
+    const currentSeconds = Math.floor(Date.now() / 1000);
+    if (!authRequest.expiresAt || typeof authRequest.expiresAt !== "number") {
+      return {
+        valid: false,
+        error: "Missing or invalid expiresAt timestamp.",
+      };
+    }
+
+    if (currentSeconds > authRequest.expiresAt) {
+      return {
+        valid: false,
+        error: `Authorization expired: current timestamp (${currentSeconds}) exceeds signature expiresAt (${authRequest.expiresAt}).`,
+      };
+    }
+
+    // 6. Monotonic Nonce check
+    if (typeof authRequest.nonce !== "number" || authRequest.nonce <= 0) {
+      return {
+        valid: false,
+        error: "Invalid nonce: nonce must be a positive integer.",
+      };
+    }
+
+    const highestNonce = this.store.getHighestNonce(cleanApprover);
+    if (authRequest.nonce <= highestNonce) {
+      return {
+        valid: false,
+        error: `Invalid nonce: nonce (${authRequest.nonce}) must be strictly greater than previous highest nonce (${highestNonce}). Replay rejected.`,
+      };
+    }
+
+    // 7. Parameter Binding Verification
+    const expectedAction = plan.intent.action;
+    const expectedSpecialist =
+      plan.matchedSpecialist?.executionAddress ??
+      plan.matchedSpecialist?.ownerAddress ??
+      plan.matchedSpecialist?.tag ??
+      "";
+    const expectedRecipient =
+      plan.intent.entities.recipientAddress ??
+      plan.intent.entities.recipientTag ??
+      "";
+    const expectedAmount = plan.intent.entities.amount ?? "0";
+    const expectedToken = plan.intent.entities.token ?? "USDC";
+    const targetChainId = authRequest.chainId ?? 56;
+
+    // 8. Cryptographic Signature Recovery (EIP-712 primary, EIP-191 fallback)
+    let recoveredSigner: string | null = null;
+    let verifiedType: "eip712" | "eip191" = "eip712";
+
+    // Attempt EIP-712 recovery if not explicitly set to eip191
+    if (authRequest.type !== "eip191") {
+      try {
+        recoveredSigner = await recoverTypedDataAddress({
+          domain: {
+            ...NAIRATAG_AUTH_DOMAIN,
+            chainId: BigInt(targetChainId),
+          },
+          types: NAIRATAG_AUTH_TYPES,
+          primaryType: "NairaTagTaskAuthorization",
+          message: {
+            planId: plan.planId,
+            action: expectedAction,
+            targetSpecialist: expectedSpecialist,
+            recipient: expectedRecipient,
+            amount: expectedAmount,
+            token: expectedToken,
+            chainId: BigInt(targetChainId),
+            nonce: BigInt(authRequest.nonce),
+            expiresAt: BigInt(authRequest.expiresAt),
+          },
+          signature: sigHex as Hex,
+        });
+        verifiedType = "eip712";
+      } catch {
+        recoveredSigner = null;
+      }
+    }
+
+    // Fallback: Attempt EIP-191 personal_sign recovery
+    if (!recoveredSigner || recoveredSigner.toLowerCase() !== cleanApprover.toLowerCase()) {
+      const canonicalMessage = buildCanonicalAuthorizationMessage({
+        planId: plan.planId,
+        action: expectedAction,
+        targetSpecialist: expectedSpecialist,
+        recipient: expectedRecipient,
+        amount: expectedAmount,
+        token: expectedToken,
+        chainId: targetChainId,
+        nonce: authRequest.nonce,
+        expiresAt: authRequest.expiresAt,
+      });
+
+      try {
+        recoveredSigner = await recoverMessageAddress({
+          message: canonicalMessage,
+          signature: sigHex as Hex,
+        });
+        verifiedType = "eip191";
+      } catch {
+        recoveredSigner = null;
+      }
+    }
+
+    // Validate recovered signer matches declared approver
+    if (!recoveredSigner || recoveredSigner.toLowerCase() !== cleanApprover.toLowerCase()) {
+      return {
+        valid: false,
+        error: `Cryptographic verification failed: recovered signer (${recoveredSigner ?? "invalid"}) does not match approvedBy (${cleanApprover}).`,
+      };
+    }
+
+    // 9. Successfully Authorized Plan
     const updatedPlan: OrchestrationPlan = {
       ...plan,
       status: "ready_for_execution",
       authorization: {
         ...plan.authorization,
         isAuthorized: true,
-        reason: `Explicitly authorized by ${cleanApprover} at ${new Date().toISOString()}.`,
+        reason: `Cryptographically verified ${verifiedType.toUpperCase()} signature by ${cleanApprover} (nonce: ${authRequest.nonce}, expiresAt: ${authRequest.expiresAt}).`,
       },
     };
 
@@ -147,7 +346,7 @@ export class TaskDelegator {
   /**
    * Executes an orchestrated task by delegating to the selected specialist agent.
    * Strictly enforces the "Identity is not Authority" rule: if the task requires financial
-   * authorization and none is provided, execution is blocked immediately.
+   * authorization, execution is blocked immediately without a verified cryptographic signature.
    */
   public async executeTask(
     plan: OrchestrationPlan,
@@ -158,8 +357,28 @@ export class TaskDelegator {
     const receiptId = `rcpt_${randomUUID()}`;
     const timestamp = new Date().toISOString();
 
-    // 1. Replay prevention check
-    if (this.executedPlans.has(plan.planId)) {
+    // 0. Validate Plan Schema Integrity (SEC-03)
+    try {
+      OrchestrationPlanSchema.parse(plan);
+    } catch (err: any) {
+      const receipt: DelegationReceipt = {
+        receiptId,
+        planId: plan?.planId ?? "unknown",
+        status: "failed",
+        specialistTag: "UNKNOWN",
+        specialistName: "Unknown",
+        specialistAddress: "",
+        capabilityId: "",
+        executedAt: timestamp,
+        latencyMs: 0,
+        error: `Plan schema validation failed: ${err.message || String(err)}`,
+      };
+      this.receipts.set(receiptId, receipt);
+      return receipt;
+    }
+
+    // 1. Replay prevention check via persistent store
+    if (this.store.hasPlan(plan.planId)) {
       const receipt: DelegationReceipt = {
         receiptId,
         planId: plan.planId,
@@ -179,11 +398,11 @@ export class TaskDelegator {
     // 2. Authorization Gate Check
     let isFullyAuthorized = plan.authorization.isAuthorized;
     let verifiedApprover = plan.caller.address ?? "0x0000000000000000000000000000000000000000";
-    let userAffirmation = "N/A";
+    let appliedAuthDetails: PlanAuthorizationRequest | undefined = authRequest;
 
     if (plan.authorization.requiresUserAuthorization) {
       if (authRequest) {
-        const authCheck = this.authorizePlan(plan, authRequest);
+        const authCheck = await this.authorizePlan(plan, authRequest);
         if (!authCheck.valid) {
           const receipt: DelegationReceipt = {
             receiptId,
@@ -202,7 +421,7 @@ export class TaskDelegator {
         }
         isFullyAuthorized = true;
         verifiedApprover = getAddress(authRequest.approvedBy);
-        userAffirmation = authRequest.userAffirmation;
+        appliedAuthDetails = authRequest;
       }
 
       if (!isFullyAuthorized) {
@@ -217,7 +436,7 @@ export class TaskDelegator {
           executedAt: timestamp,
           latencyMs: 0,
           error:
-            "CRITICAL ACCESS BLOCKED: Task requires explicit interactive user authorization. " +
+            "CRITICAL ACCESS BLOCKED: Task requires explicit interactive cryptographic wallet authorization. " +
             "Neither sovereign NairaTag identity nor Binance Agent ID credentials bypass user approval. (Identity is not Authority)",
         };
         this.receipts.set(receiptId, receipt);
@@ -250,8 +469,18 @@ export class TaskDelegator {
       const result = await this.dispatchToSpecialist(plan, specialist, opts);
       const latencyMs = Date.now() - startTime;
 
-      // Mark plan as executed to prevent replay attacks
-      this.executedPlans.add(plan.planId);
+      // Persistently record executed plan to prevent replay attacks
+      this.store.recordExecution({
+        planId: plan.planId,
+        executedAt: timestamp,
+        approver: verifiedApprover,
+        nonce: appliedAuthDetails?.nonce,
+        signatureHash: appliedAuthDetails?.signature?.slice(0, 18),
+        action: plan.intent.action,
+        targetSpecialist: specialist.executionAddress,
+        amount: plan.intent.entities.amount,
+        token: plan.intent.entities.token,
+      });
 
       const receipt: DelegationReceipt = {
         receiptId,
@@ -271,7 +500,9 @@ export class TaskDelegator {
               approvedBy: verifiedApprover,
               spendingAmount: plan.authorization.spendingLimit?.amount,
               spendingCurrency: plan.authorization.spendingLimit?.currency,
-              userAffirmation,
+              nonce: appliedAuthDetails?.nonce,
+              expiresAt: appliedAuthDetails?.expiresAt,
+              signatureType: appliedAuthDetails?.type ?? "eip712",
               verifiedAgentIdTier: plan.caller.agentIdTier,
             }
           : undefined,
@@ -300,7 +531,6 @@ export class TaskDelegator {
 
   /**
    * Dispatches the task to the specialist agent.
-   * Supports both native ecosystem handlers and general A2A JSON-RPC transport.
    */
   private async dispatchToSpecialist(
     plan: OrchestrationPlan,
@@ -376,7 +606,7 @@ export class TaskDelegator {
       };
     }
 
-    // Generic Third-Party Specialist: Dispatch via A2A or return simulated response
+    // Generic Third-Party Specialist
     if (specialist.endpoint && opts.transport === "live") {
       try {
         const response = await fetch(specialist.endpoint, {
@@ -397,11 +627,10 @@ export class TaskDelegator {
           return { payload: json.result || json };
         }
       } catch {
-        // fallback to sandbox simulation
+        // fallback
       }
     }
 
-    // Third-party sandbox fallback deliverable
     return {
       payload: {
         agent: specialist.tag,
@@ -424,7 +653,7 @@ export class TaskDelegator {
    * Checks whether a plan has already been executed.
    */
   public isPlanExecuted(planId: string): boolean {
-    return this.executedPlans.has(planId);
+    return this.store.hasPlan(planId);
   }
 }
 

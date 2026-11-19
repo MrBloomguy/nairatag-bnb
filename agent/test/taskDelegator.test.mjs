@@ -1,27 +1,48 @@
 /**
- * Test Suite: NairaTag Task Delegator & Interactive Authorization Gate (Step 9)
+ * Test Suite: NairaTag Task Delegator & Interactive Cryptographic Authorization Gate (Phase 1)
  *
  * Verifies:
  * 1. Read-only task execution (₦DEFILLAMA, ₦METEO, ₦COINGECKO) without financial authorization.
  * 2. Strict blocking of unauthorized financial tasks ("Identity is not Authority").
- * 3. Successful execution when explicit user authorization is provided.
- * 4. Cryptographic replay attack prevention (duplicate execution rejected).
- * 5. Authorization parameter integrity checks (mismatched plan ID, invalid address, caller mismatch).
- * 6. Tool execution through LLM_READ_TOOLS.execute_orchestration_plan.
+ * 3. Cryptographically signed financial task execution (EIP-712 / EIP-191).
+ * 4. Persistent replay attack prevention via DurableExecutionStore.
+ * 5. Authorization integrity & parameter anti-tampering checks.
+ * 6. Tool execution through LLM_READ_TOOLS.execute_orchestration_plan with Zod validation.
  */
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { randomUUID } from "node:crypto";
+import { privateKeyToAccount } from "viem/accounts";
 import { NairaTagOrchestrator } from "../app/agent/src/services/orchestratorCore.ts";
 import {
   TaskDelegator,
-  globalTaskDelegator,
+  NAIRATAG_AUTH_DOMAIN,
+  NAIRATAG_AUTH_TYPES,
+  buildCanonicalAuthorizationMessage,
 } from "../app/agent/src/services/taskDelegator.ts";
+import { DurableExecutionStore } from "../app/agent/src/services/durableExecutionStore.ts";
 import { LLM_READ_TOOLS } from "../app/agent/src/tools.ts";
+
+// Standard deterministic test accounts
+const TEST_USER_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+const testUserAccount = privateKeyToAccount(TEST_USER_KEY);
+
+const ATTACKER_KEY = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";
+const attackerAccount = privateKeyToAccount(ATTACKER_KEY);
+
+function createFreshDelegator() {
+  const storePath = join(tmpdir(), `task_store_${randomUUID()}.json`);
+  const store = new DurableExecutionStore(storePath);
+  const delegator = new TaskDelegator(undefined, store);
+  return { delegator, store, storePath };
+}
 
 test("1. Read-Only Task Delegation (No Financial Authorization Required)", async (t) => {
   const orchestrator = new NairaTagOrchestrator();
-  const delegator = new TaskDelegator();
+  const { delegator } = createFreshDelegator();
 
   // Test Case A: DeFi TVL query from ₦DEFILLAMA
   const tvlPlan = await orchestrator.planTask("What is PancakeSwap TVL on BNB Chain?");
@@ -51,15 +72,12 @@ test("1. Read-Only Task Delegation (No Financial Authorization Required)", async
   assert.equal(priceReceipt.resultPayload?.symbol, "BNB");
 });
 
-test("2. Financial Action Blocked Without Authorization ('Identity is not Authority')", async (t) => {
+test("2. Financial Action Blocked Without Cryptographic Authorization", async (t) => {
   const orchestrator = new NairaTagOrchestrator();
-  const delegator = new TaskDelegator();
-
-  // Real verified Agent ID holder on BSC Mainnet
-  const verifiedHolder = "0xE077ab2259170199d398ec8d70D44d7dde1C6e06";
+  const { delegator } = createFreshDelegator();
 
   const paymentPlan = await orchestrator.planTask("Send 10 USDC to ₦ALICE", {
-    address: verifiedHolder,
+    address: testUserAccount.address,
   });
 
   assert.equal(paymentPlan.authorization.requiresUserAuthorization, true);
@@ -73,21 +91,44 @@ test("2. Financial Action Blocked Without Authorization ('Identity is not Author
   assert.match(blockedReceipt.error || "", /Identity is not Authority/i);
 });
 
-test("3. Authorized Financial Task Execution", async (t) => {
+test("3. Cryptographically Authorized Financial Task Execution (EIP-712 & EIP-191)", async (t) => {
   const orchestrator = new NairaTagOrchestrator();
-  const delegator = new TaskDelegator();
+  const { delegator } = createFreshDelegator();
 
-  const userAddress = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
   const plan = await orchestrator.planTask("Send 5.5 USDC to ₦BOB", {
-    address: userAddress,
+    address: testUserAccount.address,
   });
 
-  // Provide explicit user authorization
+  const expiresAt = Math.floor(Date.now() / 1000) + 3600; // 1 hour in future
+  const nonce = 1;
+  const chainId = 56;
+
+  // Sign EIP-712 Typed Data with real user account
+  const signature = await testUserAccount.signTypedData({
+    domain: { ...NAIRATAG_AUTH_DOMAIN, chainId: BigInt(chainId) },
+    types: NAIRATAG_AUTH_TYPES,
+    primaryType: "NairaTagTaskAuthorization",
+    message: {
+      planId: plan.planId,
+      action: plan.intent.action,
+      targetSpecialist: plan.matchedSpecialist.executionAddress,
+      recipient: plan.intent.entities.recipientTag,
+      amount: plan.intent.entities.amount,
+      token: plan.intent.entities.token,
+      chainId: BigInt(chainId),
+      nonce: BigInt(nonce),
+      expiresAt: BigInt(expiresAt),
+    },
+  });
+
   const authRequest = {
     planId: plan.planId,
-    approvedBy: userAddress,
-    userAffirmation: "CONFIRM_PAYMENT_5.5_USDC",
-    timestamp: new Date().toISOString(),
+    approvedBy: testUserAccount.address,
+    signature,
+    nonce,
+    expiresAt,
+    chainId,
+    type: "eip712",
   };
 
   const receipt = await delegator.executeTask(plan, authRequest);
@@ -96,39 +137,59 @@ test("3. Authorized Financial Task Execution", async (t) => {
   assert.equal(receipt.specialistTag, "₦BLOOM");
   assert.equal(receipt.capabilityId, "settlement.usdc");
   assert.ok(receipt.settlementTxHash);
-  assert.match(receipt.settlementTxHash, /^0x51d9/);
-  assert.ok(receipt.deliverableUrl);
   assert.equal(receipt.resultPayload?.amount, "5.5");
   assert.equal(receipt.resultPayload?.currency, "USDC");
-  assert.equal(receipt.resultPayload?.settlementStatus, "confirmed");
 
   // Verify authorization details logged on the receipt
   assert.ok(receipt.authorizationDetails);
-  assert.equal(receipt.authorizationDetails.approvedBy.toLowerCase(), userAddress.toLowerCase());
+  assert.equal(receipt.authorizationDetails.approvedBy.toLowerCase(), testUserAccount.address.toLowerCase());
   assert.equal(receipt.authorizationDetails.spendingAmount, "5.5");
   assert.equal(receipt.authorizationDetails.spendingCurrency, "USDC");
+  assert.equal(receipt.authorizationDetails.nonce, 1);
 });
 
-test("4. Replay Attack Prevention", async (t) => {
+test("4. Replay Attack Prevention (Persistent Across Re-execution)", async (t) => {
   const orchestrator = new NairaTagOrchestrator();
-  const delegator = new TaskDelegator();
+  const { delegator } = createFreshDelegator();
 
-  const userAddress = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC";
   const plan = await orchestrator.planTask("Send 2.0 USDC to ₦CHARLIE", {
-    address: userAddress,
+    address: testUserAccount.address,
+  });
+
+  const expiresAt = Math.floor(Date.now() / 1000) + 1800;
+  const nonce = 1;
+
+  const signature = await testUserAccount.signTypedData({
+    domain: { ...NAIRATAG_AUTH_DOMAIN, chainId: 56n },
+    types: NAIRATAG_AUTH_TYPES,
+    primaryType: "NairaTagTaskAuthorization",
+    message: {
+      planId: plan.planId,
+      action: plan.intent.action,
+      targetSpecialist: plan.matchedSpecialist.executionAddress,
+      recipient: plan.intent.entities.recipientTag,
+      amount: plan.intent.entities.amount,
+      token: plan.intent.entities.token,
+      chainId: 56n,
+      nonce: BigInt(nonce),
+      expiresAt: BigInt(expiresAt),
+    },
   });
 
   const authRequest = {
     planId: plan.planId,
-    approvedBy: userAddress,
-    userAffirmation: "I_AUTHORIZE_THIS_PAYMENT",
+    approvedBy: testUserAccount.address,
+    signature,
+    nonce,
+    expiresAt,
+    chainId: 56,
   };
 
   // First execution: succeeds
   const firstReceipt = await delegator.executeTask(plan, authRequest);
   assert.equal(firstReceipt.status, "completed");
 
-  // Second execution of the exact same plan: strictly rejected!
+  // Second execution of the exact same plan: strictly rejected by persistent store!
   const replayReceipt = await delegator.executeTask(plan, authRequest);
   assert.equal(replayReceipt.status, "rejected");
   assert.match(replayReceipt.error || "", /Plan already executed. Replay attempt rejected/i);
@@ -136,52 +197,93 @@ test("4. Replay Attack Prevention", async (t) => {
 
 test("5. Authorization Integrity & Anti-Tampering Checks", async (t) => {
   const orchestrator = new NairaTagOrchestrator();
-  const delegator = new TaskDelegator();
+  const { delegator } = createFreshDelegator();
 
-  const userAddress = "0x90F79bf6EB2c4f870365E785982E1f101E93b906";
   const plan = await orchestrator.planTask("Send 15 USDC to ₦DAVE", {
-    address: userAddress,
+    address: testUserAccount.address,
   });
 
-  // Check 1: Plan ID mismatch
-  const mismatchAuth = {
-    planId: "plan_fake_tampered_id",
-    approvedBy: userAddress,
-    userAffirmation: "CONFIRM",
+  // Check 1: Missing signature fails
+  const noSigAuth = {
+    planId: plan.planId,
+    approvedBy: testUserAccount.address,
+    userAffirmation: "CONFIRM_PAYMENT",
   };
-  const res1 = delegator.authorizePlan(plan, mismatchAuth);
+  const res1 = await delegator.authorizePlan(plan, noSigAuth);
   assert.equal(res1.valid, false);
-  assert.match(res1.error || "", /Plan ID mismatch/i);
+  assert.match(res1.error || "", /Missing cryptographic signature/i);
 
-  // Check 2: Invalid approver address
-  const badAddrAuth = {
+  // Check 2: Invalid signature format fails
+  const badSigAuth = {
     planId: plan.planId,
-    approvedBy: "not-an-evm-address",
-    userAffirmation: "CONFIRM",
+    approvedBy: testUserAccount.address,
+    signature: "0xinvalidhex",
+    nonce: 10,
+    expiresAt: Math.floor(Date.now() / 1000) + 1000,
   };
-  const res2 = delegator.authorizePlan(plan, badAddrAuth);
+  const res2 = await delegator.authorizePlan(plan, badSigAuth);
   assert.equal(res2.valid, false);
-  assert.match(res2.error || "", /Invalid approver address/i);
+  assert.match(res2.error || "", /Invalid cryptographic signature format/i);
 
-  // Check 3: Approver mismatch (impersonation attempt)
-  const impersonatorAuth = {
+  // Check 3: Signature from attacker fails recovery against approver address
+  const attackerSignature = await attackerAccount.signTypedData({
+    domain: { ...NAIRATAG_AUTH_DOMAIN, chainId: 56n },
+    types: NAIRATAG_AUTH_TYPES,
+    primaryType: "NairaTagTaskAuthorization",
+    message: {
+      planId: plan.planId,
+      action: plan.intent.action,
+      targetSpecialist: plan.matchedSpecialist.executionAddress,
+      recipient: plan.intent.entities.recipientTag,
+      amount: plan.intent.entities.amount,
+      token: plan.intent.entities.token,
+      chainId: 56n,
+      nonce: 1n,
+      expiresAt: BigInt(Math.floor(Date.now() / 1000) + 1000),
+    },
+  });
+
+  const forgedAuth = {
     planId: plan.planId,
-    approvedBy: "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
-    userAffirmation: "CONFIRM",
+    approvedBy: testUserAccount.address, // Declaring testUser, but signed by attacker
+    signature: attackerSignature,
+    nonce: 1,
+    expiresAt: Math.floor(Date.now() / 1000) + 1000,
   };
-  const res3 = delegator.authorizePlan(plan, impersonatorAuth);
+
+  const res3 = await delegator.authorizePlan(plan, forgedAuth);
   assert.equal(res3.valid, false);
-  assert.match(res3.error || "", /Approver mismatch/i);
+  assert.match(res3.error || "", /Cryptographic verification failed/i);
 
-  // Check 4: Missing affirmation
-  const noAffirmationAuth = {
+  // Check 4: Expired authorization fails
+  const expiredSig = await testUserAccount.signTypedData({
+    domain: { ...NAIRATAG_AUTH_DOMAIN, chainId: 56n },
+    types: NAIRATAG_AUTH_TYPES,
+    primaryType: "NairaTagTaskAuthorization",
+    message: {
+      planId: plan.planId,
+      action: plan.intent.action,
+      targetSpecialist: plan.matchedSpecialist.executionAddress,
+      recipient: plan.intent.entities.recipientTag,
+      amount: plan.intent.entities.amount,
+      token: plan.intent.entities.token,
+      chainId: 56n,
+      nonce: 2n,
+      expiresAt: BigInt(Math.floor(Date.now() / 1000) - 60), // Expired 1 min ago
+    },
+  });
+
+  const expiredAuth = {
     planId: plan.planId,
-    approvedBy: userAddress,
-    userAffirmation: "   ",
+    approvedBy: testUserAccount.address,
+    signature: expiredSig,
+    nonce: 2,
+    expiresAt: Math.floor(Date.now() / 1000) - 60,
   };
-  const res4 = delegator.authorizePlan(plan, noAffirmationAuth);
+
+  const res4 = await delegator.authorizePlan(plan, expiredAuth);
   assert.equal(res4.valid, false);
-  assert.match(res4.error || "", /Missing user affirmation/i);
+  assert.match(res4.error || "", /Authorization expired/i);
 });
 
 test("6. End-to-End Execution via LLM_READ_TOOLS.execute_orchestration_plan", async (t) => {

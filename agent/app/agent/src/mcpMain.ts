@@ -97,7 +97,10 @@ import * as signing from "./signing.js";
 import { READ_TOOL_CATALOG, type ReadToolName } from "./readToolCatalog.js";
 import { verifyAgentId } from "./services/agentIdVerifier.js";
 import { globalSpecialistDirectory } from "./services/specialistDirectory.js";
-import { globalNairaTagOrchestrator } from "./services/orchestratorCore.js";
+import {
+  globalNairaTagOrchestrator,
+  OrchestrationPlanSchema,
+} from "./services/orchestratorCore.js";
 import { globalTaskDelegator } from "./services/taskDelegator.js";
 
 const APP_NAME = "agent";
@@ -735,20 +738,31 @@ export function buildMcpServer(
     "execute_orchestration_plan",
     roConfig("execute_orchestration_plan"),
     async (a: ReadArgs<"execute_orchestration_plan">) => {
-      let plan;
+      let rawPlan;
       try {
-        plan = JSON.parse(a.plan_json);
+        rawPlan = JSON.parse(a.plan_json);
       } catch (e: any) {
         return toolResult({ error: `Invalid plan_json: failed to parse JSON: ${e.message}` });
       }
 
+      let plan;
+      try {
+        plan = OrchestrationPlanSchema.parse(rawPlan);
+      } catch (e: any) {
+        return toolResult({ error: `Invalid plan schema (SEC-03): ${e.message}` });
+      }
+
       const authRequest =
-        a.approver_address && a.user_affirmation
+        a.approver_address && a.signature && typeof a.nonce === "number" && typeof a.expires_at === "number"
           ? {
               planId: plan.planId,
               approvedBy: a.approver_address,
-              userAffirmation: a.user_affirmation,
               signature: a.signature,
+              nonce: a.nonce,
+              expiresAt: a.expires_at,
+              chainId: a.chain_id,
+              type: a.auth_type,
+              userAffirmation: a.user_affirmation,
             }
           : undefined;
 

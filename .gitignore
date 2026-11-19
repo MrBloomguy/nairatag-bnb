@@ -5,4 +5,5 @@ lib/
 .env
 .env*.local
 .studio/
+.nairatag-data/
 **/node_modules/

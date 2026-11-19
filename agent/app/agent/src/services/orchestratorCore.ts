@@ -20,11 +20,15 @@
 
 import { randomUUID } from "node:crypto";
 import { isAddress, getAddress, type PublicClient } from "viem";
+import { z } from "zod";
 import {
+  AgentProfileService,
   formatCanonicalTag,
   normalizeTag,
   type AgentProfile,
+  type OnChainActivationResult,
   type SpecialistCapability,
+  type TagActivationValidity,
 } from "./agentProfileService.js";
 import {
   verifyAgentId,
@@ -90,6 +94,9 @@ export interface OrchestratorCaller {
   agentIdTier: AgentIdVerificationTier;
   isAgentIdHolder: boolean;
   verificationDetails?: AgentIdVerificationResult;
+  isTagActivated?: boolean;
+  activationStatus?: TagActivationValidity;
+  activationDetails?: OnChainActivationResult;
 }
 
 // ==========================================
@@ -137,6 +144,95 @@ export interface OrchestrationPlan {
   summary: string;
   clarificationPrompt?: string;
 }
+
+// ==========================================
+// Strict Zod Schemas for Plan Validation (SEC-03)
+// ==========================================
+
+export const ExtractedEntitiesSchema = z.object({
+  recipientTag: z.string().optional(),
+  recipientAddress: z.string().optional(),
+  amount: z.string().optional(),
+  token: z.string().optional(),
+  protocol: z.string().optional(),
+  chain: z.string().optional(),
+  location: z.string().optional(),
+  targetTag: z.string().optional(),
+  targetAddress: z.string().optional(),
+  capabilityKeyword: z.string().optional(),
+  bountyId: z.string().optional(),
+});
+
+export const ParsedIntentSchema = z.object({
+  category: z.string(),
+  action: z.string(),
+  confidence: z.number(),
+  rawPrompt: z.string(),
+  entities: ExtractedEntitiesSchema,
+  requiresSpecialist: z.boolean(),
+  requiresFinancialAuthorization: z.boolean(),
+});
+
+export const PlanDelegationTargetSchema = z.object({
+  tag: z.string(),
+  name: z.string(),
+  ownerAddress: z.string(),
+  executionAddress: z.string(),
+  capability: z.object({
+    id: z.string(),
+    category: z.string(),
+    name: z.string(),
+    description: z.string(),
+  }).passthrough(),
+  pricing: z.object({
+    model: z.string(),
+    amount: z.string().optional(),
+    currency: z.string().optional(),
+  }).optional(),
+  estimatedLatencyMs: z.number(),
+  relevanceScore: z.number(),
+  isAgentIdVerified: z.boolean(),
+  endpoint: z.string().optional(),
+});
+
+export const PlanAuthorizationRequirementSchema = z.object({
+  requiresUserAuthorization: z.boolean(),
+  isAuthorized: z.boolean(),
+  reason: z.string(),
+  spendingLimit: z.object({
+    amount: z.string(),
+    currency: z.string(),
+  }).optional(),
+  warning: z.string().optional(),
+});
+
+export const OrchestrationPlanSchema = z.object({
+  planId: z.string().min(1, "planId must not be empty"),
+  timestamp: z.string(),
+  status: z.enum([
+    "ready_for_review",
+    "ready_for_execution",
+    "needs_clarification",
+    "no_specialist_found",
+    "unsupported",
+  ]),
+  caller: z.object({
+    address: z.string().optional(),
+    tag: z.string().optional(),
+    canonicalName: z.string().optional(),
+    agentIdTier: z.string(),
+    isAgentIdHolder: z.boolean(),
+    isTagActivated: z.boolean().optional(),
+    activationStatus: z.string().optional(),
+  }).passthrough(),
+  intent: ParsedIntentSchema,
+  matchedSpecialist: PlanDelegationTargetSchema.optional(),
+  alternativeSpecialists: z.array(PlanDelegationTargetSchema).optional(),
+  preparedTaskPayload: z.record(z.unknown()).optional(),
+  authorization: PlanAuthorizationRequirementSchema,
+  summary: z.string(),
+  clarificationPrompt: z.string().optional(),
+});
 
 // ==========================================
 // Orchestrator Core Implementation
@@ -203,8 +299,33 @@ export class NairaTagOrchestrator {
       });
     }
 
-    const tier = verification?.tier ?? "unverified";
-    const isHolder = verification?.isHolder ?? false;
+    let tier = verification?.tier ?? "unverified";
+    let isHolder = verification?.isHolder ?? false;
+
+    // Verify On-Chain Activation in NairaTagAgentIDActivation.sol
+    let isTagActivated = false;
+    let activationStatus: TagActivationValidity = "NOT_ACTIVATED";
+    let activationDetails: OnChainActivationResult | undefined;
+
+    if (tag) {
+      try {
+        activationDetails = await AgentProfileService.verifyTagActivationOnChain(
+          tag,
+          opts.network ?? "bsc-mainnet",
+          opts.client
+        );
+        activationStatus = activationDetails.validityStatus;
+        isTagActivated = activationDetails.validityStatus === "VALID";
+
+        // If tag was activated but Agent ID was subsequently lost, downgrade trust tier
+        if (activationStatus === "AGENT_ID_LOST") {
+          tier = "unverified";
+          isHolder = false;
+        }
+      } catch {
+        // activation lookup failure fallback
+      }
+    }
 
     return {
       address: address ? getAddress(address) : undefined,
@@ -213,6 +334,9 @@ export class NairaTagOrchestrator {
       agentIdTier: tier,
       isAgentIdHolder: isHolder,
       verificationDetails: verification,
+      isTagActivated,
+      activationStatus,
+      activationDetails,
     };
   }
 
