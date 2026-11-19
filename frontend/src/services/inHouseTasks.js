@@ -1,4 +1,4 @@
-﻿import { listArcTasks } from './arcTasks.js';
+import { listArcTasks } from './arcTasks.js';
 const claimsByWallet = new Map();
 const CLAIM_API = import.meta.env.VITE_ARC_ADMIN_API || '/api/arc-admin';
 export const IN_HOUSE_TASKS = [];

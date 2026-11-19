@@ -1,4 +1,4 @@
-﻿import { broadcastArcPaidTaskToTelegram, broadcastArcTaskToTelegram } from './arcSocialBroadcast.js';
+import { broadcastArcPaidTaskToTelegram, broadcastArcTaskToTelegram } from './arcSocialBroadcast.js';
 import { getArcSessionToken } from './arcSession.js';
 
 const API = import.meta.env.VITE_ARC_TASKS_API || '/api/arc-tasks';
