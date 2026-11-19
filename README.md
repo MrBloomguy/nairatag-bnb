@@ -77,3 +77,9 @@ BscScan after any later deployment.
 
 Only the registry, resolver, and their minimal interfaces were carried over.
 Chain-specific payment, escrow, and Celo deployment code is excluded.
+
+## Mandatory BNB Agent Studio workflow
+
+BNB Agent Studio is the required workflow for all NairaTag agent implementation work in this hackathon. When adding an agent runtime or seller agent, follow the [official BNB Agent Studio quickstart](https://docs.bnbchain.org/developer-kit/bnbchain-studio/quickstart/): install its CLI and IDE skill, use the guided build workflow, run `bag doctor` and `bag dev`, and pass `bag deploy prepare` before any explicitly approved deployment. Keep agent pricing and signing policy deterministic and preserve the boundary between identity and authority.
+
+This initial stage is intentionally limited to Solidity registry/resolver contracts and Foundry tests; it contains no agent runtime to scaffold. Use Foundry for this on-chain contract layer and BNB Agent Studio for the later agent runtime layer. Studio's managed BNB deployment is a testnet trial; do not reuse a mainnet wallet for it. Review its deployment and secret-handling gates before deployment.
