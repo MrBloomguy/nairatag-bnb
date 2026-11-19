@@ -1,4 +1,4 @@
-﻿import { keccak256, stringToHex } from 'viem';
+import { keccak256, stringToHex } from 'viem';
 import { getEthereumProvider } from './arcPayment.js';
 
 const ARC_AGENTS_API = import.meta.env?.VITE_ARC_AGENTS_API || '/api/arc-agents';

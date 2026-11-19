@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file nairatagResolver.js
  * @description Canonical NairaTag Identity and Address-Resolution Adapter.
  * Bridges Arc payment workflows to the canonical NairaTag registry & Supabase identity layer.
