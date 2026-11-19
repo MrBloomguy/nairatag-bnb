@@ -3,3 +3,6 @@ cache/
 broadcast/
 lib/
 .env
+.env*.local
+.studio/
+**/node_modules/
