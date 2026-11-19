@@ -692,6 +692,46 @@ test("4.11. Bloom: Tag Normalization & Namehash Parity with NairaTagRegistry.sol
   assert.ok(node1.startsWith("0x") && node1.length === 66);
 });
 
+test("4.12. Bloom: Studio Wallet Matches Authorized Sender but Conflicting Environment Key is Blocked", async (t) => {
+  const adapter = new BloomAdapter();
+  const authorizedUser = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
+  const conflictingAttackerKey = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"; // Derived: 0x70997970C51812dc3A010C7d01b50e0d17dc79C8
+
+  const origKey = process.env.BNB_TESTNET_PRIVATE_KEY;
+  try {
+    // Environment key is maliciously or accidentally set to a different account
+    process.env.BNB_TESTNET_PRIVATE_KEY = conflictingAttackerKey;
+
+    // Studio wallet matches the authorized user exactly
+    const studioWallet = {
+      address: authorizedUser,
+      signTransaction: async () => "0xmockSignedTx",
+      signMessage: async () => "0xmockSignedMsg",
+      signTypedData: async () => "0xmockSignedTypedData",
+    };
+
+    const res = await adapter.execute(
+      {
+        amount: "2.5",
+        currency: "USDC",
+        recipient: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+        sender: authorizedUser,
+        authorization: { isAuthorized: true, signature: "0xvalid" },
+        testSeam: { studioWallet },
+      },
+      { transport: "live" }
+    );
+
+    // MUST fail with WALLET_AUTHORIZATION_MISMATCH because the environment key conflicts with authorized sender!
+    assert.equal(res.success, false);
+    assert.equal(res.paymentCompleted, false);
+    assert.equal(res.error?.code, "WALLET_AUTHORIZATION_MISMATCH");
+    assert.match(res.error?.message || "", /conflicting private key substitution is prohibited/i);
+  } finally {
+    process.env.BNB_TESTNET_PRIVATE_KEY = origKey;
+  }
+});
+
 // ===================================================================
 // 5. SPECIALIST ADAPTER REGISTRY INTEGRATION TESTS
 // ===================================================================

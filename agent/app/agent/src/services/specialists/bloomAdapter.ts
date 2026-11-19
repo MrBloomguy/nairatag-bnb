@@ -39,7 +39,7 @@ import {
   type TransactionReceipt,
   type Log,
 } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
+import { privateKeyToAccount, toAccount, type Account } from "viem/accounts";
 import { bscTestnet } from "viem/chains";
 
 // ==========================================
@@ -206,6 +206,12 @@ export interface BloomTestSeam {
     value: bigint;
     chainId?: number;
     hash?: `0x${string}`;
+  };
+  studioWallet?: {
+    address: `0x${string}`;
+    signTransaction?: (tx: any) => Promise<`0x${string}`>;
+    signMessage?: (msg: any) => Promise<`0x${string}`>;
+    signTypedData?: (typedData: any) => Promise<`0x${string}`>;
   };
   customResolverAddress?: `0x${string}`;
   customRegistryAddress?: `0x${string}`;
@@ -802,48 +808,82 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
 
     // 8. PATH B: LIVE ON-CHAIN BROADCAST (When transport === "live" and not dryRun)
     if (opts?.transport === "live" && !bloomPayload.dryRun) {
-      // 8a. Check Binance Agent Studio runtime wallet first
-      let runtimeWalletAddress: `0x${string}` | undefined;
-      try {
-        const { getWallet } = await import("@bnbagent/studio-runtime/wallet");
-        const w = getWallet();
-        if (w && w.address) {
-          runtimeWalletAddress = getAddress(w.address);
+      let activeSignerAccount: Account | undefined;
+      let signerSource: "studio_runtime_wallet" | "testnet_private_key" | undefined;
+
+      // 8a. Check Binance Agent Studio runtime wallet first (via test seam or @bnbagent/studio-runtime/wallet)
+      let studioWallet = bloomPayload.testSeam?.studioWallet;
+      if (!studioWallet) {
+        try {
+          const { getWallet } = await import("@bnbagent/studio-runtime/wallet");
+          const w = getWallet();
+          if (w && w.address) {
+            studioWallet = w as any;
+          }
+        } catch {
+          // studio.toml has no anchored wallet or unmaterialized keystore
         }
-      } catch {
-        // studio.toml has no anchored wallet or unmaterialized keystore
       }
 
-      // 8b. Check Environment Signing Key
-      const privateKey = (process.env.BNB_TESTNET_PRIVATE_KEY || process.env.TESTNET_SIGNER_KEY) as `0x${string}` | undefined;
+      if (studioWallet && studioWallet.address) {
+        const studioAddr = getAddress(studioWallet.address);
+        if (studioAddr.toLowerCase() === sender.toLowerCase()) {
+          // Wrap studio wallet as a Viem Account that uses the studio keystore/signer
+          activeSignerAccount = toAccount({
+            address: studioAddr,
+            async signTransaction(tx: any) {
+              if (typeof studioWallet!.signTransaction === "function") {
+                return await studioWallet!.signTransaction(tx);
+              }
+              throw new Error("Studio wallet does not support signTransaction");
+            },
+            async signMessage({ message }: any) {
+              if (typeof studioWallet!.signMessage === "function") {
+                return await studioWallet!.signMessage(message);
+              }
+              throw new Error("Studio wallet does not support signMessage");
+            },
+            async signTypedData(typedData: any) {
+              if (typeof studioWallet!.signTypedData === "function") {
+                return await studioWallet!.signTypedData(typedData);
+              }
+              throw new Error("Studio wallet does not support signTypedData");
+            },
+          });
+          signerSource = "studio_runtime_wallet";
+        }
+      }
 
-      let broadcasterAccount: ReturnType<typeof privateKeyToAccount> | undefined;
-      if (privateKey) {
+      // 8b. Check Environment Signing Key (Dedicated test/development fallback)
+      const testnetKey = (process.env.BNB_TESTNET_PRIVATE_KEY || process.env.TESTNET_SIGNER_KEY) as `0x${string}` | undefined;
+      let derivedTestnetAccount: ReturnType<typeof privateKeyToAccount> | undefined;
+
+      if (testnetKey) {
         try {
-          broadcasterAccount = privateKeyToAccount(privateKey);
+          derivedTestnetAccount = privateKeyToAccount(testnetKey);
         } catch {
           // invalid key format
         }
       }
 
-      const broadcastingAddress = runtimeWalletAddress ?? broadcasterAccount?.address;
-
-      if (!broadcastingAddress || !broadcasterAccount) {
+      // CRITICAL SECURITY CHECK: CONFLICTING SIGNER & KEY SUBSTITUTION REJECTION
+      // If a testnet key is configured in the environment, its derived address MUST match the authorized sender!
+      // This strictly prevents the vulnerability where a Studio wallet matches but a conflicting environment key signs!
+      if (derivedTestnetAccount && derivedTestnetAccount.address.toLowerCase() !== sender.toLowerCase()) {
         return {
           success: false,
           specialistTag: this.tag,
           capabilityId: this.capabilityId,
           metadata: {
             classification: "SIMULATED",
-            source: "BSC Testnet Wallet Engine",
+            source: "NairaTag Wallet Authorization Gate",
             retrievedAt: new Date().toISOString(),
             latencyMs: Date.now() - startTime,
           },
           paymentCompleted: false,
           error: {
-            code: "NO_AUTHORIZED_WALLET_AVAILABLE",
-            message:
-              `BSC Testnet live broadcast requires an authorized keystore or BNB_TESTNET_PRIVATE_KEY for ${sender}. Refusing to synthesize fake transaction hashes.`,
+            code: "WALLET_AUTHORIZATION_MISMATCH",
+            message: `Broadcasting signer key (${derivedTestnetAccount.address}) does not match authorized sender (${sender}). Direct settlement requires the authorized sender wallet to broadcast funds; conflicting private key substitution is prohibited.`,
             retryable: false,
           },
           data: {
@@ -862,22 +902,29 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
         };
       }
 
-      // 8c. WALLET AUTHORIZATION BINDING: Broadcaster must match authorized sender!
-      if (broadcastingAddress.toLowerCase() !== sender.toLowerCase()) {
+      // If Studio wallet was not loaded/matched, but testnet key matches the authorized sender:
+      if (!activeSignerAccount && derivedTestnetAccount && derivedTestnetAccount.address.toLowerCase() === sender.toLowerCase()) {
+        activeSignerAccount = derivedTestnetAccount;
+        signerSource = "testnet_private_key";
+      }
+
+      // 8c. If no active signer matching authorized sender is available, safely refuse execution
+      if (!activeSignerAccount) {
         return {
           success: false,
           specialistTag: this.tag,
           capabilityId: this.capabilityId,
           metadata: {
             classification: "SIMULATED",
-            source: "NairaTag Wallet Authorization Gate",
+            source: "BSC Testnet Wallet Engine",
             retrievedAt: new Date().toISOString(),
             latencyMs: Date.now() - startTime,
           },
           paymentCompleted: false,
           error: {
-            code: "WALLET_AUTHORIZATION_MISMATCH",
-            message: `Broadcasting wallet (${broadcastingAddress}) does not match authorized sender (${sender}). Direct settlement requires the approved sender wallet to broadcast funds; silent private key substitution is prohibited.`,
+            code: "NO_AUTHORIZED_WALLET_AVAILABLE",
+            message:
+              `BSC Testnet live broadcast requires an authorized keystore or BNB_TESTNET_PRIVATE_KEY matching authorized sender ${sender}. Refusing to broadcast with an unapproved key or synthesize fake transaction hashes.`,
             retryable: false,
           },
           data: {
@@ -898,7 +945,7 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
 
       try {
         const walletClient = createWalletClient({
-          account: broadcasterAccount,
+          account: activeSignerAccount,
           chain: bscTestnet,
           transport: http(this.defaultTestnetRpc),
         });
@@ -938,8 +985,9 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
           }
         }
 
+        // NOTE: expectedSender is strictly the authorized sender from the signed user authorization!
         const { verifiedReceipt, transferEvent } = this.verifySettlementReceipt(receipt, {
-          expectedSender: getAddress(broadcasterAccount.address),
+          expectedSender: sender,
           expectedRecipient: resolvedRecipient,
           expectedAmountAtomic: amountAtomic,
           expectedAmountFormatted: amountFormatted,
@@ -953,7 +1001,7 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
           capabilityId: this.capabilityId,
           metadata: {
             classification: "LIVE",
-            source: "BSC Testnet Broadcast (Chain ID 97)",
+            source: `BSC Testnet Broadcast (${signerSource}, Chain ID 97)`,
             retrievedAt: new Date().toISOString(),
             latencyMs: Date.now() - startTime,
           },
@@ -964,7 +1012,7 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
             paymentCompleted: true,
             amount: amountFormatted,
             currency: token.symbol,
-            sender: getAddress(broadcasterAccount.address),
+            sender,
             recipient: rawRecipient,
             resolvedRecipientAddress: resolvedRecipient,
             targetChainId: 97,
