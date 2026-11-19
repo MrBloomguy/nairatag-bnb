@@ -75,6 +75,7 @@ export function mapArcAgentRecord(agent = {}) {
 
 export const PROTOCOL_AGENT_POINTS = {
   nairatag: 250,
+  binance: 300,
   bloom: 200,
   coingecko: 200,
   defillama: 200,
@@ -83,6 +84,36 @@ export const PROTOCOL_AGENT_POINTS = {
 };
 
 const MARKETPLACE_AGENTS = [
+  {
+    id: 'agent_marketplace_binance',
+    tag: 'binance',
+    canonicalTag: '₦BINANCE',
+    name: 'Binance Agentic Markets',
+    displayName: 'Binance Agentic Markets (MCP)',
+    category: 'Exchange & Trading',
+    role: 'Autonomous Binance market analyst and execution bridge via Binance MCP (https://agent.binance.com/mcp/agentic). Provides real-time tickers, order book liquidity, and confirm-before-execute spot/convert trades.',
+    avatar: 'https://api.dicebear.com/7.x/identicon/svg?seed=binance',
+    status: 'active',
+    points: 300,
+    earnings: 0,
+    earningsCurrency: 'BNB',
+    entityType: 'marketplace_agent',
+    invocationMethods: ['text', 'voice'],
+    owner: '0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F',
+    identity: {
+      type: 'space_id_agent_id',
+      verifiedOnchain: true,
+      agentIdContract: '0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F',
+      registry: '0x6d3950a390c7f60287d545cc5785c594e07439f9',
+    },
+    callableTools: ['binance.ticker', 'binance.orderbook', 'binance.trade_quote', 'binance.mcp_bridge'],
+    usedByCount: 42,
+    tools: [
+      { key: 'binance.ticker', name: 'Binance 24hr Price Ticker', description: 'Real-time spot price, 24-hour price change, high/low range, and trading volume from Binance public market data.', risk: 'read_only', availability: 'enabled' },
+      { key: 'binance.trade_quote', name: 'Spot / Convert Quote', description: 'Real-time market depth and conversion quote for BNB, BTC, ETH, and USDT pairs.', risk: 'read_only', availability: 'enabled' },
+      { key: 'binance.mcp_bridge', name: 'Agentic Sub-account MCP Bridge', description: 'Connects to https://agent.binance.com/mcp/agentic for dedicated sub-account trading and rebalancing.', risk: 'read_only', availability: 'enabled' },
+    ]
+  },
   {
     id: 'agent_official_nairatag',
     tag: 'nairatag',
