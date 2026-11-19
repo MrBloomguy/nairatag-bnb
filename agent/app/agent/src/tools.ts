@@ -34,6 +34,7 @@ import { READ_TOOL_CATALOG } from "./readToolCatalog.js";
 import { verifyAgentId } from "./services/agentIdVerifier.js";
 import { globalSpecialistDirectory } from "./services/specialistDirectory.js";
 import { globalNairaTagOrchestrator } from "./services/orchestratorCore.js";
+import { globalTaskDelegator } from "./services/taskDelegator.js";
 
 /**
  * The project-wide default network (`[network].default`) — tool calls that
@@ -185,6 +186,31 @@ export const LLM_READ_TOOLS: ToolSet = {
         tag: caller_tag,
         address: caller_address,
       });
+    },
+  }),
+
+  execute_orchestration_plan: tool({
+    description: READ_TOOL_CATALOG.execute_orchestration_plan.description,
+    inputSchema: z.object(READ_TOOL_CATALOG.execute_orchestration_plan.inputSchema),
+    execute: async ({ plan_json, approver_address, user_affirmation, signature }) => {
+      let plan;
+      try {
+        plan = JSON.parse(plan_json);
+      } catch (e: any) {
+        return { error: `Invalid plan_json: failed to parse JSON: ${e.message}` };
+      }
+
+      const authRequest =
+        approver_address && user_affirmation
+          ? {
+              planId: plan.planId,
+              approvedBy: approver_address,
+              userAffirmation: user_affirmation,
+              signature,
+            }
+          : undefined;
+
+      return globalTaskDelegator.executeTask(plan, authRequest);
     },
   }),
   // job_count: ...        // network-wide stat — usually noise

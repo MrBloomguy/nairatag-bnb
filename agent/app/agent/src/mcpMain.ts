@@ -98,6 +98,7 @@ import { READ_TOOL_CATALOG, type ReadToolName } from "./readToolCatalog.js";
 import { verifyAgentId } from "./services/agentIdVerifier.js";
 import { globalSpecialistDirectory } from "./services/specialistDirectory.js";
 import { globalNairaTagOrchestrator } from "./services/orchestratorCore.js";
+import { globalTaskDelegator } from "./services/taskDelegator.js";
 
 const APP_NAME = "agent";
 function safeLogText(value: unknown): string {
@@ -728,6 +729,30 @@ export function buildMcpServer(
           address: a.caller_address,
         }),
       );
+    },
+  );
+  server.registerTool(
+    "execute_orchestration_plan",
+    roConfig("execute_orchestration_plan"),
+    async (a: ReadArgs<"execute_orchestration_plan">) => {
+      let plan;
+      try {
+        plan = JSON.parse(a.plan_json);
+      } catch (e: any) {
+        return toolResult({ error: `Invalid plan_json: failed to parse JSON: ${e.message}` });
+      }
+
+      const authRequest =
+        a.approver_address && a.user_affirmation
+          ? {
+              planId: plan.planId,
+              approvedBy: a.approver_address,
+              userAffirmation: a.user_affirmation,
+              signature: a.signature,
+            }
+          : undefined;
+
+      return toolResult(await globalTaskDelegator.executeTask(plan, authRequest));
     },
   );
 
