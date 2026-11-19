@@ -39,10 +39,14 @@ abstract contract TestBase {
 /**
  * @title NairaTagAgentIDActivationForkTest
  * @notice Tests NairaTagAgentIDActivation directly against live BNB Smart Chain Mainnet state (Chain ID 56).
- * @dev Verifies that the deployed contract interacts seamlessly with the official SPACE ID Agent ID contract.
+ * @dev Verifies that the deployed contract interacts seamlessly with the official SPACE ID Agent ID contract,
+ *      including impersonating a verified on-chain holder with balanceOf == 1.
  */
 contract NairaTagAgentIDActivationForkTest is TestBase {
     address public constant OFFICIAL_AGENT_ID = 0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F;
+
+    /// @notice A verified real-world wallet on BNB Mainnet holding the official SPACE ID Agent ID
+    address public constant REAL_MAINNET_HOLDER = 0xE077ab2259170199d398ec8d70D44d7dde1C6e06;
 
     NairaTagRegistry private registry;
     NairaTagAgentIDActivation private activationContract;
@@ -74,6 +78,7 @@ contract NairaTagAgentIDActivationForkTest is TestBase {
         assertEq(activationContract.OFFICIAL_AGENT_ID(), OFFICIAL_AGENT_ID);
         assertTrue(OFFICIAL_AGENT_ID.code.length > 0);
 
+        // Call balanceOf on our deployer address (non-holder) on the live fork
         address nonHolder = address(0x961d16fD035d0367DC4A08b6c0d41061901A14AA);
         uint256 bal = IBinanceAgentID(OFFICIAL_AGENT_ID).balanceOf(nonHolder);
         assertEq(bal, 0);
@@ -86,10 +91,53 @@ contract NairaTagAgentIDActivationForkTest is TestBase {
         vm.prank(nonHolder);
         bytes32 node = registry.claim("testtag");
 
+        // Calling activate on live fork reverts because nonHolder has 0 Agent ID on BNB Mainnet
         vm.prank(nonHolder);
         (bool success,) = address(activationContract).call(
             abi.encodeCall(NairaTagAgentIDActivation.activate, (node))
         );
         assertFalse(success);
+    }
+
+    /// @notice Impersonates a real verified Agent ID holder on BNB Mainnet and activates a sovereign tag
+    function test_Fork_SuccessfulActivationByRealAgentIDHolder() public {
+        if (!forkActive || OFFICIAL_AGENT_ID.code.length == 0) return;
+
+        // 1. Assert the live SPACE ID contract confirms realHolder holds Agent ID
+        uint256 bal = IBinanceAgentID(OFFICIAL_AGENT_ID).balanceOf(REAL_MAINNET_HOLDER);
+        assertEq(bal, 1);
+
+        // 2. Impersonate realHolder and claim sovereign tag in Registry
+        vm.prank(REAL_MAINNET_HOLDER);
+        bytes32 node = registry.claim("real_agent");
+        assertEq(registry.owner(node), REAL_MAINNET_HOLDER);
+
+        // 3. Real holder activates tag in NairaTagAgentIDActivation
+        vm.prank(REAL_MAINNET_HOLDER);
+        uint256 actId = activationContract.activate(node);
+
+        // 4. Assert activation state and live validity against the real contract
+        assertEq(actId, 1);
+        assertEq(activationContract.totalActiveActivations(), 1);
+        assertEq(activationContract.totalHistoricalActivations(), 1);
+        assertEq(activationContract.totalUniqueHolders(), 1);
+        assertEq(activationContract.primaryActivatedNodeOf(REAL_MAINNET_HOLDER), node);
+        assertTrue(activationContract.hasEverActivated(REAL_MAINNET_HOLDER));
+
+        (
+            address holder,
+            uint64 activatedAt,
+            uint64 historicalCount,
+            bool isActive,
+            INairaTagAgentIDActivation.ValidityStatus liveStatus,
+            INairaTagAgentIDActivation.ValidityStatus lastReason
+        ) = activationContract.getActivation(node);
+
+        assertEq(holder, REAL_MAINNET_HOLDER);
+        assertTrue(activatedAt > 0);
+        assertEq(historicalCount, 1);
+        assertTrue(isActive);
+        assertTrue(liveStatus == INairaTagAgentIDActivation.ValidityStatus.VALID);
+        assertTrue(lastReason == INairaTagAgentIDActivation.ValidityStatus.VALID);
     }
 }
