@@ -2271,7 +2271,11 @@ function ArcAppShell() {
         }
 
         const res = await resolveTag(raw);
-        setResolution({ loading: false, data: res, error: null });
+        if (res && res.success && res.resolvedAddress) {
+          setResolution({ loading: false, data: res, error: null });
+        } else {
+          setResolution({ loading: false, data: null, error: res?.error || 'Recipient could not be resolved.' });
+        }
       } catch (err) {
         setResolution({ loading: false, data: null, error: err.message || 'Tag resolution failed' });
       }
@@ -2605,7 +2609,7 @@ function ArcAppShell() {
         type: 'payment',
         txHash: result.txHash,
         amount: amountInput,
-        recipient: targetTag ? `₦${targetTag.replace(/^[$₦]/, '').toUpperCase()}` : shorten(result.recipientAddress),
+        recipient: targetTag ? (targetTag.toLowerCase().endsWith('.ai') ? targetTag.toLowerCase() : `₦${targetTag.replace(/^[$₦]/, '').toUpperCase()}`) : shorten(result.recipientAddress),
         explorerUrl: result.explorerUrl,
         executionTimeMs: result.executionTimeMs,
       });
@@ -3804,19 +3808,31 @@ function ArcAppShell() {
                 </div>
               </div>
 
-              {/* 1. Recipient ₦Tag Input Box */}
+              {/* 1. Recipient ₦Tag / .ai / 0x Address Input Box */}
               <div className="tag-recipient-box">
                 <div className="token-input-header">
                   <span>To</span>
-                  <span style={{ color: 'var(--privy-color-border-interactive)' }}>Direct Resolve</span>
+                  <span style={{ color: 'var(--privy-color-border-interactive)' }}>Dual Namespace Resolve</span>
                 </div>
                 <div className="tag-input-field-wrap">
-                  <span className="tag-currency-symbol">₦</span>
+                  <span className="tag-currency-symbol" style={{ fontSize: '13px', fontWeight: 700 }}>
+                    {recipientInput.trim().startsWith('0x')
+                      ? '⚡'
+                      : recipientInput.trim().toLowerCase().includes('.ai')
+                      ? '🟡'
+                      : '₦'}
+                  </span>
                   <input
                     type="text"
                     className="tag-text-field"
-                    placeholder="Enter name (e.g. SEGUN, FOOD)"
-                    value={recipientInput.replace(/^[$₦]/, '')}
+                    placeholder="Enter ₦tag, name.ai, or 0x address"
+                    value={
+                      recipientInput.trim().startsWith('0x')
+                        ? recipientInput
+                        : recipientInput.trim().toLowerCase().includes('.ai')
+                        ? recipientInput.replace(/^[@₦#]/, '')
+                        : recipientInput.replace(/^[$₦]/, '')
+                    }
                     onChange={(e) => setRecipientInput(e.target.value)}
                   />
                   {resolution.loading && <RefreshCw size={14} className="animate-spin" color="var(--privy-color-border-interactive)" />}
@@ -3825,14 +3841,14 @@ function ArcAppShell() {
                 {/* Quick suggestions chips */}
                 <div className="quick-tag-suggestions">
                   <span style={{ fontSize: '10.5px', color: 'var(--privy-color-foreground-3)' }}>Suggestions:</span>
-                  {['segun', 'alice', 'food', 'ride', 'pay'].map((tag) => (
+                  {['segun', 'bloom', 'binance.ai', 'space.ai'].map((tag) => (
                     <button
                       key={tag}
                       type="button"
                       className="tag-suggestion-chip"
-                      onClick={() => setRecipientInput(`₦${tag}`)}
+                      onClick={() => setRecipientInput(tag.endsWith('.ai') ? tag : `₦${tag}`)}
                     >
-                      ₦{tag}
+                      {tag.endsWith('.ai') ? `🟡 ${tag}` : `₦${tag}`}
                     </button>
                   ))}
                 </div>
@@ -3841,15 +3857,30 @@ function ArcAppShell() {
                 {resolution.data && resolution.data.resolvedAddress && (
                   <div className="resolved-recipient-card">
                     <div className="resolved-left">
-                      <div className="resolved-avatar">
-                        {resolution.data.tag ? resolution.data.tag.slice(1, 2) : '₦'}
+                      <div
+                        className="resolved-avatar"
+                        style={
+                          resolution.data.namespace === 'space-id' || resolution.data.tag?.endsWith('.ai')
+                            ? { background: 'linear-gradient(135deg, #F0B90B 0%, #D99B00 100%)', color: '#0B0E11', fontWeight: 800 }
+                            : {}
+                        }
+                      >
+                        {resolution.data.namespace === 'space-id' || resolution.data.tag?.endsWith('.ai')
+                          ? 'AI'
+                          : resolution.data.tag ? resolution.data.tag.slice(1, 2) : '₦'}
                       </div>
                       <div>
-                        <div className="resolved-title">
-                          {resolution.data.tag || 'Verified Recipient'}
-                          <span style={{ marginLeft: '6px', fontSize: '10px', color: 'var(--privy-color-success-dark)', fontWeight: 600 }}>
-                            â— RESOLVED
-                          </span>
+                        <div className="resolved-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>{resolution.data.tag || 'Verified Recipient'}</span>
+                          {resolution.data.namespace === 'space-id' || resolution.data.tag?.endsWith('.ai') ? (
+                            <span style={{ fontSize: '10px', background: 'rgba(240, 185, 11, 0.15)', color: '#F0B90B', border: '1px solid rgba(240, 185, 11, 0.35)', borderRadius: '6px', padding: '1px 6px', fontWeight: 700 }}>
+                              🟡 SPACE ID (.ai)
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: '10px', color: 'var(--privy-color-success-dark)', fontWeight: 600 }}>
+                              ● RESOLVED
+                            </span>
+                          )}
                         </div>
                         {resolution.data.phone && (
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '10.5px', color: '#047857', fontWeight: 700, margin: '2px 0' }}>
@@ -3859,6 +3890,9 @@ function ArcAppShell() {
                         )}
                         <div className="resolved-sub">
                           {shorten(resolution.data.resolvedAddress)}
+                          <span style={{ marginLeft: '6px', color: 'var(--privy-color-foreground-3)' }}>
+                            ({resolution.data.network || 'BNB Smart Chain'})
+                          </span>
                         </div>
                       </div>
                     </div>

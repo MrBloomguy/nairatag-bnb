@@ -4,7 +4,7 @@
  * Handles instant tag resolution, availability checks, and claims lookup directly.
  */
 
-import { isAddress, getAddress } from 'viem';
+import { isAddress, getAddress, encodeFunctionData } from 'viem';
 
 try { process.loadEnvFile(); } catch {}
 
@@ -59,15 +59,85 @@ export default async function handler(req, res) {
       if (action === 'resolve' && tag) {
         const clean = String(tag).trim().replace(/^[₦$@#]/, '').toLowerCase();
 
+        // 1A. Dual Namespace: Resolve SPACE ID Agent ID (.ai on BNB Smart Chain)
+        if (clean.endsWith('.ai')) {
+          const handle = clean.slice(0, -3);
+
+          try {
+            const data = encodeFunctionData({
+              abi: [{ name: 'ownerOfHandle', type: 'function', inputs: [{ type: 'string' }], outputs: [{ type: 'address' }] }],
+              functionName: 'ownerOfHandle',
+              args: [handle],
+            });
+            const rpcRes = await fetch('https://bsc-dataseed.binance.org', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                jsonrpc: '2.0',
+                id: 1,
+                method: 'eth_call',
+                params: [{ to: '0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F', data }, 'latest'],
+              }),
+            });
+            const rpcData = await rpcRes.json();
+            if (rpcData?.result && rpcData.result !== '0x' && rpcData.result.length >= 66) {
+              const hexAddr = '0x' + rpcData.result.slice(-40);
+              if (isAddress(hexAddr) && hexAddr !== '0x0000000000000000000000000000000000000000') {
+                return res.status(200).json({
+                  ok: true,
+                  namespace: 'space-id',
+                  tag: `${handle}.ai`,
+                  cleanTag: `${handle}.ai`,
+                  handle,
+                  address: getAddress(hexAddr),
+                  network: 'BNB Smart Chain',
+                  isVerified: true,
+                  source: 'space-id-agent-id',
+                  badge: 'SPACE ID Agent ID (.ai)',
+                  contract: '0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F',
+                  reputation: 100,
+                });
+              }
+            }
+          } catch (spaceErr) {
+            console.warn('[SPACE ID API error]', spaceErr?.message);
+          }
+
+          if (RESERVED_PROTOCOL_AGENTS[handle]) {
+            const agent = RESERVED_PROTOCOL_AGENTS[handle];
+            return res.status(200).json({
+              ok: true,
+              namespace: 'space-id',
+              tag: `${handle}.ai`,
+              cleanTag: `${handle}.ai`,
+              handle,
+              address: getAddress(agent.address),
+              network: 'BNB Smart Chain',
+              isVerified: true,
+              source: 'protocol-registered-agent',
+              badge: 'SPACE ID Agent ID (.ai)',
+              reputation: 100,
+            });
+          }
+
+          return res.status(404).json({
+            ok: false,
+            namespace: 'space-id',
+            error: `SPACE ID Agent ID "${clean}" not found on BNB Smart Chain.`,
+          });
+        }
+
+        // 1B. Sovereign NairaTag Resolution (₦TAG)
         // Check protocol agents first
         if (RESERVED_PROTOCOL_AGENTS[clean]) {
           const agent = RESERVED_PROTOCOL_AGENTS[clean];
           return res.status(200).json({
             ok: true,
+            namespace: 'nairatag',
             tag: agent.tag,
             cleanTag: clean,
             address: getAddress(agent.address),
-            network: 'Arc Mainnet',
+            network: 'BNB Smart Chain',
             isVerified: true,
             reputation: 100,
           });

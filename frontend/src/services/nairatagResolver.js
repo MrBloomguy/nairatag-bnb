@@ -10,8 +10,55 @@
  */
 
 import { isAddress, getAddress } from 'viem';
-import { ARC_NAIRATAG_REGISTRY_ADDRESS } from '../config/arc.js';
+import { ARC_NAIRATAG_REGISTRY_ADDRESS, BNB_OFFICIAL_AGENT_ID } from '../config/arc.js';
 import { publicClient } from './arcPayment.js';
+
+export const SPACE_ID_AGENT_ID_ADDRESS = BNB_OFFICIAL_AGENT_ID || '0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F';
+
+export const SPACE_ID_AGENT_ID_ABI = [
+  {
+    type: 'function',
+    name: 'ownerOfHandle',
+    stateMutability: 'view',
+    inputs: [{ name: 'handle', type: 'string' }],
+    outputs: [{ name: '', type: 'address' }],
+  },
+  {
+    type: 'function',
+    name: 'handleOf',
+    stateMutability: 'view',
+    inputs: [{ name: '', type: 'address' }],
+    outputs: [{ name: '', type: 'string' }],
+  },
+  {
+    type: 'function',
+    name: 'ownerOf',
+    stateMutability: 'view',
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    outputs: [{ name: '', type: 'address' }],
+  },
+  {
+    type: 'function',
+    name: 'isValidHandle',
+    stateMutability: 'view',
+    inputs: [{ name: 'handle', type: 'string' }],
+    outputs: [{ name: '', type: 'bool' }],
+  },
+  {
+    type: 'function',
+    name: 'name',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ name: '', type: 'string' }],
+  },
+  {
+    type: 'function',
+    name: 'symbol',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ name: '', type: 'string' }],
+  },
+];
 
 const RESOLVER_API_BASE = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_NAIRATAG_RESOLVER_API) || '/api/claims';
 const SUPABASE_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL) || 'https://bbpdupijsgdghemfpijr.supabase.co';
@@ -29,7 +76,7 @@ export const KNOWN_AGENTS = {
 
 /**
  * Normalizes user-entered NairaTag into canonical format.
- * Strips â‚¦ prefix, whitespace, and validates safe alphanumeric / underscore format.
+ * Strips ₦ prefix, whitespace, and validates safe alphanumeric / underscore format.
  * Prevents homoglyphs / Unicode spoofing.
  */
 export function normalizeTag(rawInput) {
@@ -38,8 +85,8 @@ export function normalizeTag(rawInput) {
   }
 
   const trimmed = rawInput.trim();
-  // Strip optional leading currency or at symbols: â‚¦, N, @, #
-  const clean = trimmed.replace(/^[â‚¦Nn@#]/, '').toLowerCase();
+  // Strip optional leading currency or at symbols: ₦, N, @, #
+  const clean = trimmed.replace(/^[₦Nn@#]/, '').toLowerCase();
 
   if (clean.length < 2) {
     return { valid: false, error: 'Tag must be at least 2 characters long.' };
@@ -60,18 +107,20 @@ export function normalizeTag(rawInput) {
   return {
     valid: true,
     cleanTag: clean,
-    canonicalTag: `â‚¦${clean}`,
-    displayTag: `â‚¦${clean}`
+    canonicalTag: `₦${clean}`,
+    displayTag: `₦${clean}`
   };
 }
 
 /**
- * Validates whether an input is a tag, an EVM address, or invalid.
+ * Validates whether an input is a NairaTag, a SPACE ID Agent ID (.ai), an EVM address, or invalid.
+ * Strictly separates the sovereign NairaTag namespace (₦tag) from the SPACE ID namespace (.ai).
  */
 export function classifyInput(input) {
   if (!input || typeof input !== 'string') return { type: 'invalid' };
   const trimmed = input.trim();
 
+  // 1. EVM Hex Address
   if (isAddress(trimmed)) {
     return {
       type: 'address',
@@ -79,10 +128,30 @@ export function classifyInput(input) {
     };
   }
 
+  const clean = trimmed.toLowerCase().replace(/^[@₦#]/, '');
+
+  // 2. SPACE ID Agent ID (.ai domain on BNB Chain)
+  if (clean.endsWith('.ai')) {
+    const handle = clean.slice(0, -3);
+    const isValid = /^[a-z0-9_-]+$/.test(handle) && handle.length >= 1 && handle.length <= 64;
+    return {
+      type: 'space_id',
+      namespace: 'space-id',
+      handle,
+      name: `${handle}.ai`,
+      canonicalTag: `${handle}.ai`,
+      displayTag: `${handle}.ai`,
+      valid: isValid,
+      error: isValid ? null : 'SPACE ID Agent ID handle must be 1-64 alphanumeric characters.'
+    };
+  }
+
+  // 3. Sovereign NairaTag
   const norm = normalizeTag(trimmed);
   if (norm.valid) {
     return {
       type: 'tag',
+      namespace: 'nairatag',
       ...norm
     };
   }
@@ -94,22 +163,133 @@ export function classifyInput(input) {
 }
 
 /**
- * Resolves a canonical NairaTag to its verified recipient wallet address.
+ * Resolves a SPACE ID Agent ID (.ai handle) to its verified owner address on BNB Smart Chain.
+ * Queries the official SPACE ID Agent ID contract (0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F) on Chain ID 56.
  * 
- * @param {string} rawTag - e.g. "â‚¦michael" or "michael"
- * @param {string} [network='arc'] - Target payment network
+ * @param {string} rawInput - e.g. "binance.ai", "space.ai", "alice.ai"
  * @returns {Promise<{
  *   success: boolean,
+ *   namespace: 'space-id',
  *   canonicalTag?: string,
  *   cleanTag?: string,
+ *   handle?: string,
  *   resolvedAddress?: string,
  *   network?: string,
  *   isVerified?: boolean,
  *   source?: string,
+ *   contract?: string,
+ *   badge?: string,
+ *   reputation?: number,
  *   error?: string
  * }>}
  */
-export async function resolveTag(rawTag, network = 'arc') {
+export async function resolveSpaceIdAgent(rawInput) {
+  if (!rawInput || typeof rawInput !== 'string') {
+    return { success: false, namespace: 'space-id', error: 'Input cannot be empty.' };
+  }
+
+  const trimmed = rawInput.trim().toLowerCase();
+  const clean = trimmed.replace(/^[@₦#]/, '');
+  const handle = clean.endsWith('.ai') ? clean.slice(0, -3) : clean;
+
+  if (!handle || handle.length < 1 || handle.length > 64) {
+    return {
+      success: false,
+      namespace: 'space-id',
+      error: 'Invalid SPACE ID Agent ID handle length (1-64 characters).',
+    };
+  }
+
+  if (!/^[a-z0-9_-]+$/.test(handle)) {
+    return {
+      success: false,
+      namespace: 'space-id',
+      error: 'SPACE ID Agent ID handle may only contain letters, numbers, hyphens, and underscores.',
+    };
+  }
+
+  const canonicalName = `${handle}.ai`;
+
+  // 1. Direct on-chain resolution via official SPACE ID Agent ID contract on BNB Smart Chain Mainnet
+  try {
+    const owner = await publicClient.readContract({
+      address: SPACE_ID_AGENT_ID_ADDRESS,
+      abi: SPACE_ID_AGENT_ID_ABI,
+      functionName: 'ownerOfHandle',
+      args: [handle],
+    });
+
+    if (owner && isAddress(owner) && owner !== '0x0000000000000000000000000000000000000000') {
+      return {
+        success: true,
+        namespace: 'space-id',
+        tag: canonicalName,
+        canonicalTag: canonicalName,
+        cleanTag: canonicalName,
+        handle,
+        resolvedAddress: getAddress(owner),
+        network: 'BNB Smart Chain',
+        isVerified: true,
+        source: 'space-id-agent-id',
+        contract: SPACE_ID_AGENT_ID_ADDRESS,
+        badge: 'SPACE ID Agent ID (.ai)',
+        reputation: 100,
+      };
+    }
+  } catch (contractErr) {
+    console.warn('[SPACE ID resolution notice] On-chain readContract error:', contractErr?.message);
+  }
+
+  // 2. Check protocol reserved agents fallback
+  if (KNOWN_AGENTS[handle]) {
+    const agent = KNOWN_AGENTS[handle];
+    return {
+      success: true,
+      namespace: 'space-id',
+      tag: canonicalName,
+      canonicalTag: canonicalName,
+      cleanTag: canonicalName,
+      handle,
+      resolvedAddress: getAddress(agent.address),
+      network: 'BNB Smart Chain',
+      isVerified: true,
+      source: 'protocol-registered-agent',
+      contract: SPACE_ID_AGENT_ID_ADDRESS,
+      badge: 'SPACE ID Agent ID (.ai)',
+      reputation: 100,
+    };
+  }
+
+  return {
+    success: false,
+    namespace: 'space-id',
+    error: `SPACE ID Agent ID "${canonicalName}" is not registered on BNB Smart Chain.`,
+    canonicalTag: canonicalName,
+    isRegistered: false,
+  };
+}
+
+/**
+ * Resolves a recipient identifier to its verified recipient wallet address.
+ * Dual-namespace aware:
+ * - If ending in ".ai": resolves through SPACE ID Agent ID on BNB Smart Chain
+ * - Otherwise: resolves through sovereign NairaTag protocol (₦TAG)
+ * 
+ * @param {string} rawTag - e.g. "₦michael", "michael", or "binance.ai"
+ * @param {string} [network='bnb'] - Target payment network
+ */
+export async function resolveTag(rawTag, network = 'bnb') {
+  if (!rawTag || typeof rawTag !== 'string') {
+    return { success: false, error: 'Tag cannot be empty.' };
+  }
+
+  const cleanInput = rawTag.trim().toLowerCase().replace(/^[@₦#]/, '');
+
+  // Route .ai domains directly to SPACE ID Agent ID resolver
+  if (cleanInput.endsWith('.ai')) {
+    return resolveSpaceIdAgent(rawTag);
+  }
+
   const norm = normalizeTag(rawTag);
   if (!norm.valid) {
     return {
@@ -125,12 +305,14 @@ export async function resolveTag(rawTag, network = 'arc') {
     const agent = KNOWN_AGENTS[clean];
     return {
       success: true,
+      namespace: 'nairatag',
+      tag: agent.tag || norm.canonicalTag,
       canonicalTag: agent.tag || norm.canonicalTag,
       cleanTag: clean,
       resolvedAddress: getAddress(agent.address),
-      network: 'Arc Mainnet',
+      network: 'BNB Smart Chain',
       isVerified: true,
-      source: 'arc-protocol-agent',
+      source: 'bnb-protocol-agent',
       reputation: 100,
     };
   }
@@ -145,10 +327,12 @@ export async function resolveTag(rawTag, network = 'arc') {
       if (data.ok && data.address && isAddress(data.address)) {
         return {
           success: true,
+          namespace: 'nairatag',
+          tag: data.tag || norm.canonicalTag,
           canonicalTag: data.tag || norm.canonicalTag,
           cleanTag: clean,
           resolvedAddress: getAddress(data.address),
-          network: data.network || 'Arc Mainnet',
+          network: data.network || 'BNB Smart Chain',
           isVerified: true,
           source: 'canonical-nairatag-registry',
           reputation: data.reputation || 100,
@@ -168,10 +352,12 @@ export async function resolveTag(rawTag, network = 'arc') {
         if (owner && owner !== '0x0000000000000000000000000000000000000000') {
           return {
             success: true,
+            namespace: 'nairatag',
+            tag: norm.canonicalTag,
             canonicalTag: norm.canonicalTag,
             cleanTag: clean,
             resolvedAddress: getAddress(owner),
-            network: 'Arc Mainnet',
+            network: 'BNB Smart Chain',
             isVerified: true,
             source: 'onchain-registry',
             reputation: 100,
@@ -181,6 +367,7 @@ export async function resolveTag(rawTag, network = 'arc') {
 
       return {
         success: false,
+        namespace: 'nairatag',
         error: `NairaTag ${norm.canonicalTag} is not registered in the canonical registry.`,
         canonicalTag: norm.canonicalTag,
         isRegistered: false,
@@ -190,7 +377,7 @@ export async function resolveTag(rawTag, network = 'arc') {
     console.warn('[NairaTagResolver notice] API resolve check fallback:', apiErr.message);
   }
 
-  // 4. Onchain fallback check
+  // Onchain fallback check
   try {
     const owner = await publicClient.readContract({
       address: ARC_NAIRATAG_REGISTRY_ADDRESS,
@@ -201,10 +388,12 @@ export async function resolveTag(rawTag, network = 'arc') {
     if (owner && owner !== '0x0000000000000000000000000000000000000000') {
       return {
         success: true,
+        namespace: 'nairatag',
+        tag: norm.canonicalTag,
         canonicalTag: norm.canonicalTag,
         cleanTag: clean,
         resolvedAddress: getAddress(owner),
-        network: 'Arc Mainnet',
+        network: 'BNB Smart Chain',
         isVerified: true,
         source: 'onchain-registry',
         reputation: 100,
@@ -214,6 +403,7 @@ export async function resolveTag(rawTag, network = 'arc') {
 
   return {
     success: false,
+    namespace: 'nairatag',
     error: `NairaTag ${norm.canonicalTag} could not be resolved.`,
     canonicalTag: norm.canonicalTag,
     isRegistered: false,
@@ -317,6 +507,44 @@ export async function getTagForWallet(walletAddress) {
   }
 
   return { hasTag: false, tag: null };
+}
+
+/**
+ * Look up official SPACE ID Agent ID (.ai handle) registered to a given wallet address.
+ * Queries SPACE ID Agent ID contract handleOf(address) on BNB Smart Chain Mainnet.
+ * 
+ * @param {string} walletAddress
+ * @returns {Promise<{ hasSpaceId: boolean, handle: string|null, name: string|null, contract?: string }>}
+ */
+export async function getSpaceIdForWallet(walletAddress) {
+  if (!walletAddress || !isAddress(walletAddress)) {
+    return { hasSpaceId: false, handle: null, name: null };
+  }
+
+  try {
+    const handle = await publicClient.readContract({
+      address: SPACE_ID_AGENT_ID_ADDRESS,
+      abi: SPACE_ID_AGENT_ID_ABI,
+      functionName: 'handleOf',
+      args: [getAddress(walletAddress)],
+    });
+
+    if (handle && typeof handle === 'string' && handle.trim().length > 0) {
+      const clean = handle.trim().toLowerCase();
+      return {
+        hasSpaceId: true,
+        handle: clean,
+        name: `${clean}.ai`,
+        canonicalTag: `${clean}.ai`,
+        contract: SPACE_ID_AGENT_ID_ADDRESS,
+        network: 'BNB Smart Chain',
+      };
+    }
+  } catch (err) {
+    console.warn('[getSpaceIdForWallet notice]', err?.message);
+  }
+
+  return { hasSpaceId: false, handle: null, name: null };
 }
 
 /**

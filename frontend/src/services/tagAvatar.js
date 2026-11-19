@@ -472,11 +472,12 @@
   // Master Resolver function returning complete card profile data
   function resolveTagProfile(tag, options = {}) {
     const raw = String(tag || '').trim();
-    const handle = raw.replace(/^₦/, '').toLowerCase();
-    const display = raw.startsWith('₦') ? raw : `₦${raw}`;
+    const isAi = raw.toLowerCase().endsWith('.ai');
+    const handle = raw.replace(/^[₦@#]/, '').toLowerCase();
+    const display = isAi ? handle : (raw.startsWith('₦') ? raw : `₦${raw}`);
     const hashIndex = hashTag(handle);
     const palette = PALETTES[hashIndex];
-    const network = options.network || 'celo';
+    const network = options.network || 'bnb';
 
     return {
       handle,
