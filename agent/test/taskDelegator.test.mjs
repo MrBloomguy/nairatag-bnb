@@ -99,16 +99,37 @@ test("3. Cryptographically Authorized Financial Task Execution (EIP-712 & EIP-19
     address: testUserAccount.address,
   });
 
-  // Inject verified test receipt to validate authentic on-chain receipt handling
+  const mockRecipient = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
+  const usdcAddress = "0x64544969ed7EBf5f083679233325356EbE738930";
+
+  // Inject verified test receipt to validate authentic on-chain receipt & transfer event handling
   plan.preparedTaskPayload = {
-    testTxHash: "0x3f5c71a938c8b18a25c1e87498c19a8264e819b265819e625a1739810a916382",
-    testReceipt: {
-      status: "success",
-      blockNumber: 42100800n,
-      transactionHash: "0x3f5c71a938c8b18a25c1e87498c19a8264e819b265819e625a1739810a916382",
-      from: testUserAccount.address,
-      to: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-      gasUsed: 21000n,
+    amount: "5.5",
+    currency: "USDC",
+    recipient: mockRecipient,
+    testSeam: {
+      txHash: "0x3f5c71a938c8b18a25c1e87498c19a8264e819b265819e625a1739810a916382",
+      receipt: {
+        status: "success",
+        blockNumber: 42100800n,
+        transactionHash: "0x3f5c71a938c8b18a25c1e87498c19a8264e819b265819e625a1739810a916382",
+        from: testUserAccount.address,
+        to: usdcAddress,
+        gasUsed: 45000n,
+        logs: [
+          {
+            address: usdcAddress,
+            topics: [
+              "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+              "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+              "0x00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8",
+            ],
+            data: "0x0000000000000000000000000000000000000000000000004c53ecdc18a60000",
+            logIndex: 0n,
+            transactionIndex: 0n,
+          },
+        ],
+      },
     },
   };
 
@@ -146,7 +167,8 @@ test("3. Cryptographically Authorized Financial Task Execution (EIP-712 & EIP-19
 
   const receipt = await delegator.executeTask(plan, authRequest);
 
-  assert.equal(receipt.status, "completed");
+  assert.equal(receipt.status, "confirmed");
+  assert.equal(receipt.paymentCompleted, true);
   assert.equal(receipt.specialistTag, "₦BLOOM");
   assert.equal(receipt.capabilityId, "settlement.usdc");
   assert.ok(receipt.settlementTxHash);
@@ -169,15 +191,36 @@ test("4. Replay Attack Prevention (Persistent Across Re-execution)", async (t) =
     address: testUserAccount.address,
   });
 
+  const mockRecipient = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
+  const usdcAddress = "0x64544969ed7EBf5f083679233325356EbE738930";
+
   plan.preparedTaskPayload = {
-    testTxHash: "0x4e6d82b049d9c29b36d2f98509d20b9375f920c376920f736b2840921b027493",
-    testReceipt: {
-      status: "success",
-      blockNumber: 42100805n,
-      transactionHash: "0x4e6d82b049d9c29b36d2f98509d20b9375f920c376920f736b2840921b027493",
-      from: testUserAccount.address,
-      to: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-      gasUsed: 21000n,
+    amount: "2.0",
+    currency: "USDC",
+    recipient: mockRecipient,
+    testSeam: {
+      txHash: "0x4e6d82b049d9c29b36d2f98509d20b9375f920c376920f736b2840921b027493",
+      receipt: {
+        status: "success",
+        blockNumber: 42100805n,
+        transactionHash: "0x4e6d82b049d9c29b36d2f98509d20b9375f920c376920f736b2840921b027493",
+        from: testUserAccount.address,
+        to: usdcAddress,
+        gasUsed: 45000n,
+        logs: [
+          {
+            address: usdcAddress,
+            topics: [
+              "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+              "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+              "0x00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8",
+            ],
+            data: "0x0000000000000000000000000000000000000000000000001bc16d674ec80000",
+            logIndex: 0n,
+            transactionIndex: 0n,
+          },
+        ],
+      },
     },
   };
 
@@ -212,7 +255,8 @@ test("4. Replay Attack Prevention (Persistent Across Re-execution)", async (t) =
 
   // First execution: succeeds
   const firstReceipt = await delegator.executeTask(plan, authRequest);
-  assert.equal(firstReceipt.status, "completed");
+  assert.equal(firstReceipt.status, "confirmed");
+  assert.equal(firstReceipt.paymentCompleted, true);
 
   // Second execution of the exact same plan: strictly rejected by persistent store!
   const replayReceipt = await delegator.executeTask(plan, authRequest);

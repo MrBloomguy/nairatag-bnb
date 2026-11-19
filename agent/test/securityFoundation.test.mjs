@@ -237,6 +237,7 @@ test("SEC-02.1: Nonce rollback attempt is rejected", async (t) => {
 
   // Execute first plan with nonce = 5
   const plan1 = await orchestrator.planTask("Send 1 USDC to ₦ALICE", { address: userAccount.address });
+  plan1.preparedTaskPayload = { recipient: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" };
   const expiresAt = Math.floor(Date.now() / 1000) + 1200;
 
   const sig1 = await userAccount.signTypedData({
@@ -263,7 +264,7 @@ test("SEC-02.1: Nonce rollback attempt is rejected", async (t) => {
     nonce: 5,
     expiresAt,
   });
-  assert.equal(receipt1.status, "completed");
+  assert.equal(receipt1.status, "simulated");
 
   // Attempt second plan with rolled-back nonce = 3 (<= 5)
   const plan2 = await orchestrator.planTask("Send 1 USDC to ₦BOB", { address: userAccount.address });
@@ -305,6 +306,7 @@ test("SEC-02.2: Replay protection persists across complete process restart simul
     const delegator1 = new TaskDelegator(undefined, store1);
 
     const plan = await orchestrator.planTask("Send 12 USDC to ₦CHARLIE", { address: userAccount.address });
+    plan.preparedTaskPayload = { recipient: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" };
     const expiresAt = Math.floor(Date.now() / 1000) + 1200;
     const nonce = 20;
 
@@ -335,7 +337,7 @@ test("SEC-02.2: Replay protection persists across complete process restart simul
 
     // First execution succeeds in instance 1
     const receipt1 = await delegator1.executeTask(plan, authRequest);
-    assert.equal(receipt1.status, "completed");
+    assert.equal(receipt1.status, "simulated");
 
     // === SIMULATE PROCESS RESTART ===
     // Destroy instance 1 completely and spin up a fresh instance 2 pointing to the same storage

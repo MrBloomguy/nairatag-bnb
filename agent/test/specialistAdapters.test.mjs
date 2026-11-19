@@ -171,7 +171,7 @@ test("3.4. Open-Meteo: Logistics Severe Weather Evaluation Logic", (t) => {
 });
 
 // ===================================================================
-// 4. ₦BLOOM SPECIALIST ADAPTER TESTS
+// 4. ₦BLOOM SPECIALIST ADAPTER TESTS (Phase 2B Hardened Verification)
 // ===================================================================
 
 test("4.1. Bloom: Financial Execution Without Cryptographic Authorization Fails", async (t) => {
@@ -184,6 +184,7 @@ test("4.1. Bloom: Financial Execution Without Cryptographic Authorization Fails"
   });
 
   assert.equal(result.success, false);
+  assert.equal(result.paymentCompleted, false);
   assert.equal(result.metadata.classification, "SIMULATED");
   assert.ok(result.error);
   assert.equal(result.error.code, "UNAUTHORIZED_SETTLEMENT");
@@ -204,12 +205,13 @@ test("4.2. Bloom: Live Mainnet Settlement is Strictly Blocked (Chain ID 56)", as
   );
 
   assert.equal(result.success, false);
+  assert.equal(result.paymentCompleted, false);
   assert.ok(result.error);
   assert.equal(result.error.code, "MAINNET_SETTLEMENT_DISABLED");
-  assert.match(result.error.message, /Mainnet settlement.*is strictly blocked/i);
+  assert.match(result.error.message, /Mainnet settlement.*strictly prohibited/i);
 });
 
-test("4.3. Bloom: Simulation Mode Never Synthesizes Fake Hashes", async (t) => {
+test("4.3. Bloom: Simulation Mode Never Claims Payment Succeeded or Invents Hashes", async (t) => {
   const adapter = new BloomAdapter();
   const result = await adapter.execute({
     amount: "2.5",
@@ -219,20 +221,94 @@ test("4.3. Bloom: Simulation Mode Never Synthesizes Fake Hashes", async (t) => {
     dryRun: true,
   });
 
-  assert.equal(result.success, true);
+  // Simulation Honesty: payment did NOT complete
+  assert.equal(result.success, false);
+  assert.equal(result.paymentCompleted, false);
   assert.equal(result.metadata.classification, "SIMULATED");
   assert.equal(result.onChainReceipt, undefined); // NO fake on-chain receipt!
+  assert.equal(result.error?.code, "SIMULATION_ONLY");
   assert.ok(result.data);
-  assert.equal(result.data.settlementStatus, "simulated_dry_run");
+  assert.equal(result.data.settlementStatus, "simulation");
   assert.equal(result.data.verifiedOnChain, false);
-  assert.match(result.data.simulationReason || "", /No fake hash synthesized/i);
+  assert.match(result.data.simulationReason || "", /No fake transaction hashes were generated/i);
 });
 
-test("4.4. Bloom: Authentic Receipt Verification (Testnet)", async (t) => {
+test("4.4. Bloom: Input Safety - Amount Validation (Missing, Negative, Excessive Decimals)", async (t) => {
+  const adapter = new BloomAdapter();
+
+  // Missing amount
+  const missingAmt = await adapter.execute({
+    recipient: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    authorization: { isAuthorized: true, signature: "0xvalid" },
+  });
+  assert.equal(missingAmt.error?.code, "MISSING_AMOUNT");
+
+  // Negative amount
+  const negAmt = await adapter.execute({
+    amount: "-5.0",
+    recipient: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    authorization: { isAuthorized: true, signature: "0xvalid" },
+  });
+  assert.equal(negAmt.error?.code, "INVALID_AMOUNT");
+
+  // Zero amount
+  const zeroAmt = await adapter.execute({
+    amount: "0",
+    recipient: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    authorization: { isAuthorized: true, signature: "0xvalid" },
+  });
+  assert.equal(zeroAmt.error?.code, "INVALID_AMOUNT");
+
+  // Excessive decimal precision (> 18 decimals)
+  const excessiveDecimals = await adapter.execute({
+    amount: "1.00000000000000000001", // 20 decimals
+    currency: "USDC",
+    recipient: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    authorization: { isAuthorized: true, signature: "0xvalid" },
+  });
+  assert.equal(excessiveDecimals.error?.code, "EXCESSIVE_DECIMAL_PRECISION");
+});
+
+test("4.5. Bloom: Input Safety - Recipient Validation & Tag Resolution", async (t) => {
+  const adapter = new BloomAdapter();
+
+  // Missing recipient
+  const missingRecip = await adapter.execute({
+    amount: "1.0",
+    currency: "USDC",
+    authorization: { isAuthorized: true, signature: "0xvalid" },
+  });
+  assert.equal(missingRecip.error?.code, "MISSING_RECIPIENT");
+
+  // Unresolvable sovereign tag
+  const unresolvable = await adapter.execute({
+    amount: "1.0",
+    currency: "USDC",
+    recipient: "₦NON_EXISTENT_TAG_XYZ_9999",
+    authorization: { isAuthorized: true, signature: "0xvalid" },
+  });
+  assert.equal(unresolvable.error?.code, "UNRESOLVED_RECIPIENT_TAG");
+});
+
+test("4.6. Bloom: Authentic ERC-20 Receipt & Transfer Event Verification", async (t) => {
   const adapter = new BloomAdapter();
   const mockTxHash = "0x89ab12cd34ef5678901234567890abcdef1234567890abcdef1234567890abcd";
   const mockFrom = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
   const mockTo = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
+  const tokenAddress = "0x64544969ed7EBf5f083679233325356EbE738930"; // BSC Testnet USDC
+
+  // Transfer log for 5.0 USDC (18 decimals: 5 * 10^18 = 0x4563918244f40000)
+  const validTransferLog = {
+    address: tokenAddress,
+    topics: [
+      "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef", // Transfer(address,address,uint256)
+      "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266", // from
+      "0x00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8", // to
+    ],
+    data: "0x0000000000000000000000000000000000000000000000004563918244f40000", // 5.0 * 10^18
+    logIndex: 0n,
+    transactionIndex: 0n,
+  };
 
   const result = await adapter.execute({
     amount: "5.0",
@@ -240,30 +316,138 @@ test("4.4. Bloom: Authentic Receipt Verification (Testnet)", async (t) => {
     recipient: mockTo,
     sender: mockFrom,
     authorization: { isAuthorized: true, signature: "0xvalid" },
-    testTxHash: mockTxHash,
-    testReceipt: {
-      status: "success",
-      blockNumber: 42001000n,
-      transactionHash: mockTxHash,
-      from: mockFrom,
-      to: mockTo,
-      gasUsed: 21000n,
+    testSeam: {
+      txHash: mockTxHash,
+      receipt: {
+        status: "success",
+        blockNumber: 42001000n,
+        transactionHash: mockTxHash,
+        from: mockFrom,
+        to: tokenAddress,
+        gasUsed: 45000n,
+        logs: [validTransferLog],
+      },
     },
   });
 
   assert.equal(result.success, true);
+  assert.equal(result.paymentCompleted, true);
   assert.equal(result.metadata.classification, "LIVE");
   assert.ok(result.onChainReceipt);
   assert.equal(result.onChainReceipt.status, "success");
   assert.equal(result.onChainReceipt.chainId, 97);
-  assert.equal(result.onChainReceipt.blockNumber, 42001000);
   assert.equal(result.onChainReceipt.transactionHash, mockTxHash);
-  assert.equal(result.onChainReceipt.from.toLowerCase(), mockFrom.toLowerCase());
-  assert.equal(result.onChainReceipt.to.toLowerCase(), mockTo.toLowerCase());
-  assert.ok((result.onChainReceipt.verifiedOnExplorerUrl || "").includes("testnet.bscscan.com"));
+
+  // Deep transfer event assertions
+  assert.ok(result.onChainReceipt.transferEvent);
+  assert.equal(result.onChainReceipt.transferEvent.tokenContract.toLowerCase(), tokenAddress.toLowerCase());
+  assert.equal(result.onChainReceipt.transferEvent.from.toLowerCase(), mockFrom.toLowerCase());
+  assert.equal(result.onChainReceipt.transferEvent.to.toLowerCase(), mockTo.toLowerCase());
+  assert.equal(result.onChainReceipt.transferEvent.amountFormatted, "5");
 });
 
-test("4.5. Bloom: Reverted On-Chain Transaction Detection", async (t) => {
+test("4.7. Bloom: Event Log Anti-Tampering - Recipient, Token, and Amount Mismatches", async (t) => {
+  const adapter = new BloomAdapter();
+  const mockTxHash = "0x89ab12cd34ef5678901234567890abcdef1234567890abcdef1234567890abcd";
+  const mockFrom = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
+  const mockTo = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
+  const wrongRecipient = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC";
+  const tokenAddress = "0x64544969ed7EBf5f083679233325356EbE738930";
+
+  // Case A: Recipient mismatch in event log
+  const wrongRecipientLog = {
+    address: tokenAddress,
+    topics: [
+      "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+      "0x0000000000000000000000003c44cdddb6a900fa2b585dd299e03d12fa4293bc", // Wrong recipient!
+    ],
+    data: "0x0000000000000000000000000000000000000000000000004563918244f40000",
+  };
+
+  const recipientMismatch = await adapter.execute({
+    amount: "5.0",
+    currency: "USDC",
+    recipient: mockTo,
+    sender: mockFrom,
+    authorization: { isAuthorized: true, signature: "0xvalid" },
+    testSeam: {
+      receipt: {
+        status: "success",
+        blockNumber: 42001000n,
+        transactionHash: mockTxHash,
+        from: mockFrom,
+        to: tokenAddress,
+        gasUsed: 45000n,
+        logs: [wrongRecipientLog],
+      },
+    },
+  });
+  assert.equal(recipientMismatch.success, false);
+  assert.equal(recipientMismatch.error?.code, "RECIPIENT_MISMATCH");
+
+  // Case B: Amount mismatch in event log (Requested 5.0, event only transferred 1.0)
+  const wrongAmountLog = {
+    address: tokenAddress,
+    topics: [
+      "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+      "0x00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8",
+    ],
+    data: "0x0000000000000000000000000000000000000000000000000de0b6b3a7640000", // Only 1.0 * 10^18!
+  };
+
+  const amountMismatch = await adapter.execute({
+    amount: "5.0",
+    currency: "USDC",
+    recipient: mockTo,
+    sender: mockFrom,
+    authorization: { isAuthorized: true, signature: "0xvalid" },
+    testSeam: {
+      receipt: {
+        status: "success",
+        blockNumber: 42001000n,
+        transactionHash: mockTxHash,
+        from: mockFrom,
+        to: tokenAddress,
+        gasUsed: 45000n,
+        logs: [wrongAmountLog],
+      },
+    },
+  });
+  assert.equal(amountMismatch.success, false);
+  assert.equal(amountMismatch.error?.code, "TRANSFER_AMOUNT_MISMATCH");
+
+  // Case C: Token contract mismatch
+  const wrongTokenLog = {
+    address: "0x1111111111111111111111111111111111111111", // Fake token
+    topics: wrongAmountLog.topics,
+    data: wrongAmountLog.data,
+  };
+
+  const tokenMismatch = await adapter.execute({
+    amount: "5.0",
+    currency: "USDC",
+    recipient: mockTo,
+    sender: mockFrom,
+    authorization: { isAuthorized: true, signature: "0xvalid" },
+    testSeam: {
+      receipt: {
+        status: "success",
+        blockNumber: 42001000n,
+        transactionHash: mockTxHash,
+        from: mockFrom,
+        to: tokenAddress,
+        gasUsed: 45000n,
+        logs: [wrongTokenLog],
+      },
+    },
+  });
+  assert.equal(tokenMismatch.success, false);
+  assert.equal(tokenMismatch.error?.code, "TOKEN_CONTRACT_MISMATCH");
+});
+
+test("4.8. Bloom: Reverted On-Chain Transaction Detection", async (t) => {
   const adapter = new BloomAdapter();
   const mockTxHash = "0xdeadbeef12345678901234567890abcdef1234567890abcdef1234567890abcd";
   const mockFrom = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
@@ -275,19 +459,21 @@ test("4.5. Bloom: Reverted On-Chain Transaction Detection", async (t) => {
     recipient: mockTo,
     sender: mockFrom,
     authorization: { isAuthorized: true, signature: "0xvalid" },
-    testTxHash: mockTxHash,
-    testReceipt: {
-      status: "reverted",
-      blockNumber: 42001002n,
-      transactionHash: mockTxHash,
-      from: mockFrom,
-      to: mockTo,
-      gasUsed: 21000n,
+    testSeam: {
+      receipt: {
+        status: "reverted",
+        blockNumber: 42001002n,
+        transactionHash: mockTxHash,
+        from: mockFrom,
+        to: mockTo,
+        gasUsed: 21000n,
+        logs: [],
+      },
     },
   });
 
   assert.equal(result.success, false);
-  assert.equal(result.metadata.classification, "LIVE");
+  assert.equal(result.paymentCompleted, false);
   assert.ok(result.onChainReceipt);
   assert.equal(result.onChainReceipt.status, "reverted");
   assert.equal(result.error?.code, "TRANSACTION_REVERTED");

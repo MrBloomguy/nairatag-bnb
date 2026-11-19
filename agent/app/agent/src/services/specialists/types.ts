@@ -21,6 +21,16 @@ export interface SpecialistExecutionMetadata {
   rateLimitRemaining?: number;
 }
 
+export interface OnChainTransferEvent {
+  tokenContract: `0x${string}`;
+  from: `0x${string}`;
+  to: `0x${string}`;
+  amountRaw: string;
+  amountFormatted: string;
+  logIndex?: number;
+  transactionIndex?: number;
+}
+
 export interface OnChainSettlementReceipt {
   chainId: number;
   blockNumber: number;
@@ -33,6 +43,7 @@ export interface OnChainSettlementReceipt {
   tokenSymbol: string;
   gasUsed?: string;
   verifiedOnExplorerUrl?: string;
+  transferEvent?: OnChainTransferEvent;
 }
 
 export interface SpecialistExecutionResult<T = Record<string, unknown>> {
@@ -40,6 +51,7 @@ export interface SpecialistExecutionResult<T = Record<string, unknown>> {
   specialistTag: string;
   capabilityId: string;
   metadata: SpecialistExecutionMetadata;
+  paymentCompleted?: boolean;
   data?: T;
   error?: {
     code: string;

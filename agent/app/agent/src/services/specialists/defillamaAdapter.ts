@@ -43,7 +43,7 @@ export class DefiLlamaAdapter implements SpecialistAdapter<DefiLlamaData> {
 
   private cache = new Map<string, CacheEntry>();
   private readonly ttlMs = 60_000; // 60 seconds
-  private readonly defaultTimeoutMs = 8_000;
+  private readonly defaultTimeoutMs = 15_000;
 
   private readonly protocolAliases: Record<string, string> = {
     pancake: "pancakeswap",

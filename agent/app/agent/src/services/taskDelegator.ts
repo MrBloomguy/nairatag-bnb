@@ -117,7 +117,8 @@ export interface PlanAuthorizationRequest {
 export interface DelegationReceipt {
   receiptId: string;
   planId: string;
-  status: "completed" | "failed" | "unauthorized" | "rejected";
+  status: "confirmed" | "completed" | "simulated" | "failed" | "unauthorized" | "rejected";
+  paymentCompleted?: boolean;
   specialistTag: string;
   specialistName: string;
   specialistAddress: string;
@@ -501,10 +502,15 @@ export class TaskDelegator {
         token: plan.intent.entities.token,
       });
 
+      const isFinancial = specialist.tag === "₦BLOOM" || plan.authorization.requiresUserAuthorization;
+      const isConfirmed = isFinancial && result.classification === "LIVE" && result.onChainReceipt?.status === "success";
+      const isSimulated = isFinancial && result.classification === "SIMULATED";
+
       const receipt: DelegationReceipt = {
         receiptId,
         planId: plan.planId,
-        status: "completed",
+        status: isConfirmed ? "confirmed" : isSimulated ? "simulated" : "completed",
+        paymentCompleted: isConfirmed,
         specialistTag: specialist.tag,
         specialistName: specialist.name,
         specialistAddress: specialist.executionAddress,
@@ -588,6 +594,17 @@ export class TaskDelegator {
       );
 
       if (!adapterResult.success) {
+        if (adapterResult.error?.code === "SIMULATION_ONLY") {
+          return {
+            payload: (adapterResult.data as Record<string, unknown>) ?? {},
+            txHash: undefined,
+            deliverableUrl: undefined,
+            classification: "SIMULATED",
+            metadata: adapterResult.metadata,
+            onChainReceipt: undefined,
+          };
+        }
+
         throw new Error(
           adapterResult.error?.message ||
             `Specialist ${specialist.tag} execution failed: ${adapterResult.error?.code || "UNKNOWN"}`
