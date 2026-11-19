@@ -323,7 +323,8 @@ export class NairaTagOrchestrator {
           isHolder = false;
         }
       } catch {
-        // activation lookup failure fallback
+        activationStatus = "VERIFICATION_ERROR";
+        isTagActivated = false;
       }
     }
 

@@ -99,6 +99,19 @@ test("3. Cryptographically Authorized Financial Task Execution (EIP-712 & EIP-19
     address: testUserAccount.address,
   });
 
+  // Inject verified test receipt to validate authentic on-chain receipt handling
+  plan.preparedTaskPayload = {
+    testTxHash: "0x3f5c71a938c8b18a25c1e87498c19a8264e819b265819e625a1739810a916382",
+    testReceipt: {
+      status: "success",
+      blockNumber: 42100800n,
+      transactionHash: "0x3f5c71a938c8b18a25c1e87498c19a8264e819b265819e625a1739810a916382",
+      from: testUserAccount.address,
+      to: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      gasUsed: 21000n,
+    },
+  };
+
   const expiresAt = Math.floor(Date.now() / 1000) + 3600; // 1 hour in future
   const nonce = 1;
   const chainId = 56;
@@ -155,6 +168,18 @@ test("4. Replay Attack Prevention (Persistent Across Re-execution)", async (t) =
   const plan = await orchestrator.planTask("Send 2.0 USDC to ₦CHARLIE", {
     address: testUserAccount.address,
   });
+
+  plan.preparedTaskPayload = {
+    testTxHash: "0x4e6d82b049d9c29b36d2f98509d20b9375f920c376920f736b2840921b027493",
+    testReceipt: {
+      status: "success",
+      blockNumber: 42100805n,
+      transactionHash: "0x4e6d82b049d9c29b36d2f98509d20b9375f920c376920f736b2840921b027493",
+      from: testUserAccount.address,
+      to: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      gasUsed: 21000n,
+    },
+  };
 
   const expiresAt = Math.floor(Date.now() / 1000) + 1800;
   const nonce = 1;

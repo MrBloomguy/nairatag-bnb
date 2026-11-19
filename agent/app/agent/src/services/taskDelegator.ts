@@ -33,6 +33,12 @@ import {
   DurableExecutionStore,
   globalExecutionStore,
 } from "./durableExecutionStore.js";
+import { SpecialistAdapterRegistry } from "./specialists/specialistAdapterRegistry.js";
+import type {
+  ExecutionClassification,
+  SpecialistExecutionMetadata,
+  OnChainSettlementReceipt,
+} from "./specialists/types.js";
 import {
   globalSpecialistDirectory,
   SpecialistAgentDirectory,
@@ -121,6 +127,9 @@ export interface DelegationReceipt {
   resultPayload?: Record<string, unknown>;
   settlementTxHash?: string;
   deliverableUrl?: string;
+  classification?: ExecutionClassification;
+  executionMetadata?: SpecialistExecutionMetadata;
+  onChainReceipt?: OnChainSettlementReceipt;
   error?: string;
   authorizationDetails?: {
     approvedBy: string;
@@ -422,6 +431,16 @@ export class TaskDelegator {
         isFullyAuthorized = true;
         verifiedApprover = getAddress(authRequest.approvedBy);
         appliedAuthDetails = authRequest;
+        if (authCheck.authorizedPlan) {
+          plan = {
+            ...authCheck.authorizedPlan,
+            authorization: {
+              ...authCheck.authorizedPlan.authorization,
+              signature: authRequest.signature,
+              approvedBy: authRequest.approvedBy,
+            },
+          };
+        }
       }
 
       if (!isFullyAuthorized) {
@@ -495,6 +514,9 @@ export class TaskDelegator {
         resultPayload: result.payload,
         settlementTxHash: result.txHash,
         deliverableUrl: result.deliverableUrl,
+        classification: result.classification,
+        executionMetadata: result.metadata,
+        onChainReceipt: result.onChainReceipt,
         authorizationDetails: plan.authorization.requiresUserAuthorization
           ? {
               approvedBy: verifiedApprover,
@@ -536,77 +558,53 @@ export class TaskDelegator {
     plan: OrchestrationPlan,
     specialist: PlanDelegationTarget,
     opts: { transport?: "live" | "sandbox" }
-  ): Promise<{ payload: Record<string, unknown>; txHash?: string; deliverableUrl?: string }> {
-    const normTag = specialist.tag.replace(/^₦/, "").toLowerCase();
+  ): Promise<{
+    payload: Record<string, unknown>;
+    txHash?: string;
+    deliverableUrl?: string;
+    classification?: ExecutionClassification;
+    metadata?: SpecialistExecutionMetadata;
+    onChainReceipt?: OnChainSettlementReceipt;
+  }> {
+    const registry = SpecialistAdapterRegistry.getInstance();
 
-    // Specialist Handler A: ₦BLOOM (Sub-Second Settlement & Escrow)
-    if (normTag === "bloom") {
-      const amt = plan.intent.entities.amount ?? "1.0";
-      const tok = plan.intent.entities.token ?? "USDC";
-      const recipient =
-        plan.intent.entities.recipientTag ?? plan.intent.entities.recipientAddress ?? "0xRecipient";
+    // Route to first-party specialist adapter if registered (₦DEFILLAMA, ₦COINGECKO, ₦METEO, ₦BLOOM)
+    if (registry.hasAdapter(specialist.tag)) {
+      const adapterResult = await registry.executeSpecialist(
+        specialist.tag,
+        {
+          ...plan.preparedTaskPayload,
+          ...plan.intent.entities,
+          authorization: plan.authorization,
+          isAuthorized: plan.authorization.isAuthorized,
+          chainId: plan.authorization.spendingLimit?.chainId ?? (opts.transport === "live" ? 97 : 97),
+          sender: plan.authorization.approvedBy,
+          dryRun: opts.transport === "sandbox",
+        },
+        {
+          transport: opts.transport,
+          network: "bsc-testnet",
+        }
+      );
+
+      if (!adapterResult.success) {
+        throw new Error(
+          adapterResult.error?.message ||
+            `Specialist ${specialist.tag} execution failed: ${adapterResult.error?.code || "UNKNOWN"}`
+        );
+      }
 
       return {
-        txHash: `0x51d9${randomUUID().replace(/-/g, "")}`,
-        payload: {
-          settlementStatus: "confirmed",
-          amount: amt,
-          currency: tok,
-          routedTo: recipient,
-          protocolRail: "NairaTagBountyEscrow / Arc USDC Memo Precompile",
-          settlementLatencyMs: 420,
-          confirmedBlock: 28410200,
-        },
-        deliverableUrl: `https://explorer.arc.io/tx/0x51d9${randomUUID().replace(/-/g, "").slice(0, 32)}`,
+        payload: (adapterResult.data as Record<string, unknown>) ?? {},
+        txHash: adapterResult.onChainReceipt?.transactionHash,
+        deliverableUrl: adapterResult.onChainReceipt?.verifiedOnExplorerUrl,
+        classification: adapterResult.metadata.classification,
+        metadata: adapterResult.metadata,
+        onChainReceipt: adapterResult.onChainReceipt,
       };
     }
 
-    // Specialist Handler B: ₦DEFILLAMA (DeFi Metrics & Protocol TVL)
-    if (normTag === "defillama") {
-      const proto = plan.intent.entities.protocol ?? "pancakeswap";
-      return {
-        payload: {
-          protocol: proto,
-          chain: "bsc",
-          tvlUsd: 1485290000,
-          dailyVolumeUsd: 215430000,
-          verifiedOracleTimestamp: new Date().toISOString(),
-          telemetrySource: "DeFiLlama On-Chain Indexer",
-        },
-      };
-    }
-
-    // Specialist Handler C: ₦METEO (Weather Logistics)
-    if (normTag === "meteo") {
-      const loc = plan.intent.entities.location ?? "Lagos";
-      return {
-        payload: {
-          location: loc,
-          temperatureC: 28.5,
-          condition: "Partly Cloudy",
-          humidityPercent: 78,
-          precipitationProbability: 15,
-          transitLogisticsRiskIndex: "low",
-          safeForDelivery: true,
-        },
-      };
-    }
-
-    // Specialist Handler D: ₦COINGECKO (Market Price Oracle)
-    if (normTag === "coingecko") {
-      const tok = plan.intent.entities.token ?? "BNB";
-      return {
-        payload: {
-          symbol: tok,
-          priceUsdc: "645.20",
-          change24hPercent: "+3.45",
-          marketCapUsd: 94200000000,
-          source: "CoinGecko DEX/CEX Volume-Weighted Average",
-        },
-      };
-    }
-
-    // Generic Third-Party Specialist
+    // Generic Third-Party Specialist via A2A JSON-RPC 2.0
     if (specialist.endpoint && opts.transport === "live") {
       try {
         const response = await fetch(specialist.endpoint, {
@@ -624,7 +622,16 @@ export class TaskDelegator {
         });
         if (response.ok) {
           const json = await response.json();
-          return { payload: json.result || json };
+          return {
+            payload: json.result || json,
+            classification: "LIVE",
+            metadata: {
+              classification: "LIVE",
+              source: specialist.endpoint,
+              retrievedAt: new Date().toISOString(),
+              latencyMs: 120,
+            },
+          };
         }
       } catch {
         // fallback
@@ -638,6 +645,13 @@ export class TaskDelegator {
         status: "success",
         note: `Executed task deliverable generated by ${specialist.name}`,
         preparedPayload: plan.preparedTaskPayload,
+      },
+      classification: "SIMULATED",
+      metadata: {
+        classification: "SIMULATED",
+        source: `Simulated Sandbox: ${specialist.name}`,
+        retrievedAt: new Date().toISOString(),
+        latencyMs: 10,
       },
     };
   }

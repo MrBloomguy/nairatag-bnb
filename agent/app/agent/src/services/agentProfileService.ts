@@ -165,7 +165,8 @@ export type TagActivationValidity =
   | "TAG_OWNERSHIP_CHANGED"
   | "AGENT_ID_LOST"
   | "VOLUNTARILY_DEACTIVATED"
-  | "CONTRACT_UNAVAILABLE";
+  | "CONTRACT_UNAVAILABLE"
+  | "VERIFICATION_ERROR";
 
 export interface OnChainActivationResult {
   node: `0x${string}`;
@@ -545,7 +546,7 @@ export class AgentProfileService {
         node,
         tag,
         isActive: false,
-        validityStatus: "NOT_ACTIVATED",
+        validityStatus: "VERIFICATION_ERROR",
         contractAddress: activationAddr,
         network,
       };
