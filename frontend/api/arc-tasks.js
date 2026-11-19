@@ -7,8 +7,8 @@
 import { isAddress, verifyMessage } from 'viem';
 import { createHash } from 'node:crypto';
 
-const ARC_CHAIN_ID = 5042;
-const ARC_MAINNET_ESCROW = '0x69f1af5b02703ad0f9e59892e6bc472b6c5599ab';
+const ARC_CHAIN_ID = 56;
+const BNB_MAINNET_ESCROW = '0x0fcdf115e1cff7b85835cd8ccdc0a66c8c9a95f7';
 const MAX_SIGNATURE_AGE_MS = 15 * 60 * 1000; // 15 minutes window for clock skew
 
 try { process.loadEnvFile(); } catch {}
@@ -23,8 +23,97 @@ const TASK_CATEGORIES = {
   content: 'Content',
   test: 'Testing',
   community: 'Community',
+  analytics: 'Analytics & DeFi',
+  logistics: 'Logistics & Weather',
   bounty: 'Bounty',
 };
+
+const DEFAULT_BNB_TASKS = [
+  {
+    id: 'bnb_task_agent_id_verification',
+    chain_id: 56,
+    title: 'Verify Agent ID (SPACE ID) Integration & Resolve name.ai Tag',
+    description: 'Interact with the SPACE ID Agent ID contract (0x60B9...022F) on BNB Chain. Bind a .ai agentic wallet identity to a NairaTag sovereign profile and verify sub-second routing.',
+    category: 'dev',
+    category_label: 'Engineering',
+    creator_tag: 'nairatag',
+    deliverable: 'Submit transaction hash or resolved .ai name proof on BNB Chain.',
+    reward_usdc: 0.005,
+    reward_bnb: 0.005,
+    reward_token: 'BNB',
+    assigned_agent_tag: null,
+    points: 50,
+    deadline_label: 'Open bounty',
+    status: 'open',
+    escrow_status: 'escrow_active',
+    escrow_contract: BNB_MAINNET_ESCROW,
+    created_at: new Date(Date.now() - 3600000).toISOString(),
+    participant_count: 3,
+  },
+  {
+    id: 'bnb_task_defi_tvl_rankings',
+    chain_id: 56,
+    title: 'Supply DeFi TVL & Protocol Liquidity Rankings for BNB Agents',
+    description: 'Prepare a verifiable ranking of BNB Chain DeFi total value locked, PancakeSwap pools, and autonomous liquidity feeds for AI agents settling in BNB.',
+    category: 'analytics',
+    category_label: 'Analytics & DeFi',
+    creator_tag: 'defillama',
+    deliverable: 'Submit a public analytics report or on-chain data telemetry for BNB Chain liquidity.',
+    reward_usdc: 0.002,
+    reward_bnb: 0.002,
+    reward_token: 'BNB',
+    assigned_agent_tag: null,
+    points: 30,
+    deadline_label: 'Open bounty',
+    status: 'open',
+    escrow_status: 'escrow_active',
+    escrow_contract: BNB_MAINNET_ESCROW,
+    created_at: new Date(Date.now() - 7200000).toISOString(),
+    participant_count: 5,
+  },
+  {
+    id: 'bnb_task_settlement_benchmark',
+    chain_id: 56,
+    title: 'Sub-Second BNB Settlement & Autonomous Escrow Benchmark',
+    description: 'Execute a micro-settlement via NairaTag smart contracts on BNB Chain. Measure block inclusion speed, gas efficiency, and multi-agent escrow release.',
+    category: 'test',
+    category_label: 'Testing',
+    creator_tag: 'nairatag',
+    deliverable: 'Submit BscScan transaction hash verifying escrow lock and release in BNB.',
+    reward_usdc: 0.003,
+    reward_bnb: 0.003,
+    reward_token: 'BNB',
+    assigned_agent_tag: null,
+    points: 40,
+    deadline_label: 'Open bounty',
+    status: 'open',
+    escrow_status: 'escrow_active',
+    escrow_contract: BNB_MAINNET_ESCROW,
+    created_at: new Date(Date.now() - 10800000).toISOString(),
+    participant_count: 2,
+  },
+  {
+    id: 'bnb_task_weather_oracle',
+    chain_id: 56,
+    title: 'Weather & Real-World Commerce Telemetry for BNB Logistics',
+    description: 'Autonomous sensor verification and real-world temperature oracle feed for supply-chain milestone clearance settled natively in BNB.',
+    category: 'logistics',
+    category_label: 'Logistics & Weather',
+    creator_tag: 'meteo',
+    deliverable: 'Provide structured weather oracle payload and signed telemetry log.',
+    reward_usdc: 0.001,
+    reward_bnb: 0.001,
+    reward_token: 'BNB',
+    assigned_agent_tag: null,
+    points: 20,
+    deadline_label: 'Open bounty',
+    status: 'open',
+    escrow_status: 'escrow_active',
+    escrow_contract: BNB_MAINNET_ESCROW,
+    created_at: new Date(Date.now() - 14400000).toISOString(),
+    participant_count: 4,
+  },
+];
 
 const DEMO_TASK_IDS = new Set([
   'b001', 'b002', 'b003', 'b004', 'b005', 'b006',
@@ -36,6 +125,7 @@ const RETIRED_TASK_TITLES = new Set([
   'build an opera minipay deep-link widget',
   'forex spot rate verification (usdc / ngn)',
   'defi tvl & price benchmark feed on arc mainnet',
+  'supply defi tvl & protocol liquidity rankings for arc agents',
   'weather & city commerce oracle telemetry',
   'sub-second settlement benchmark on arc mainnet',
   'monitor the arc mainnet tag',
@@ -54,12 +144,17 @@ function normalizeWallet(wallet) {
 }
 
 function normalizeTaskDetails(value = {}) {
+  const token = String(value.rewardToken || 'BNB').toUpperCase();
+  const amt = Number(value.rewardBNB || value.rewardUSDC || value.rewardAmount || value.reward || (token === 'BNB' ? 0.005 : 10));
   return {
     title: String(value.title || '').trim().slice(0, 120),
     category: String(value.category || 'dev'),
     description: String(value.description || '').trim().slice(0, 2000),
     deliverable: String(value.deliverable || value.description || '').trim().slice(0, 500),
-    rewardUSDC: Number(value.rewardUSDC),
+    rewardToken: token,
+    rewardBNB: token === 'BNB' ? amt : 0,
+    rewardUSDC: token !== 'BNB' ? amt : 0,
+    rewardAmount: amt,
     deadline: String(value.deadline || 'Open until closed').trim().slice(0, 80),
   };
 }
@@ -175,7 +270,10 @@ export default async function handler(req, res) {
         return [];
       });
 
-      const visibleTasks = (tasks || []).filter((task) => !DEMO_TASK_IDS.has(String(task.id)) && !isRetiredTask(task));
+      const dbVisibleTasks = (tasks || []).filter((task) => !DEMO_TASK_IDS.has(String(task.id)) && !isRetiredTask(task));
+      const dbTaskIds = new Set(dbVisibleTasks.map((t) => t.id));
+      const missingBnbTasks = DEFAULT_BNB_TASKS.filter((t) => !dbTaskIds.has(t.id));
+      const visibleTasks = [...missingBnbTasks, ...dbVisibleTasks];
 
       // Fetch participants count
       const taskIds = visibleTasks.map((t) => t.id);
@@ -192,7 +290,7 @@ export default async function handler(req, res) {
       }
 
       for (const t of visibleTasks) {
-        t.participant_count = participantCounts[t.id] || 0;
+        t.participant_count = (participantCounts[t.id] || 0) + (t.participant_count || 0);
       }
 
       const wallet = normalizeWallet(req.query?.wallet);
@@ -240,8 +338,8 @@ export default async function handler(req, res) {
       if (task.description.length < 10) {
         return res.status(400).json({ ok: false, error: 'Describe the task and what counts as completion.' });
       }
-      if (!Number.isFinite(task.rewardUSDC) || task.rewardUSDC <= 0 || task.rewardUSDC > 1000000) {
-        return res.status(400).json({ ok: false, error: 'Enter a valid USDC reward greater than zero.' });
+      if (!Number.isFinite(task.rewardAmount) || task.rewardAmount <= 0 || task.rewardAmount > 1000000) {
+        return res.status(400).json({ ok: false, error: `Enter a valid ${task.rewardToken} reward greater than zero.` });
       }
 
       const authorization = await verifyWalletAction(req, { ...body, action, taskId, task });
@@ -269,7 +367,7 @@ export default async function handler(req, res) {
 
       const row = {
         id: taskId,
-        chain_id: ARC_CHAIN_ID,
+        chain_id: 56,
         title: task.title,
         description: task.description,
         category: task.category,
@@ -277,14 +375,15 @@ export default async function handler(req, res) {
         creator_tag: creatorTag,
         creator_wallet: walletAddress,
         deliverable: task.deliverable,
-        reward_usdc: task.rewardUSDC,
-        reward_token: 'USDC',
+        reward_usdc: task.rewardUSDC || task.rewardAmount,
+        reward_bnb: task.rewardBNB || task.rewardAmount,
+        reward_token: task.rewardToken || 'BNB',
         assigned_agent_tag: null,
         points: 0,
         deadline_label: task.deadline,
         status: 'open',
         escrow_status: 'escrow_active',
-        escrow_contract: ARC_MAINNET_ESCROW,
+        escrow_contract: BNB_MAINNET_ESCROW,
       };
 
       const inserted = await supabaseFetch('arc_tasks', {

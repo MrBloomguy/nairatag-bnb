@@ -25,7 +25,7 @@ export async function syncInHouseVouchers(walletAddress) {
 export async function claimInHouseVoucher() { throw new Error('Bundled voucher tasks have been retired.'); }
 
 
-export async function listSocialTasks() { return (await listArcTasks()).tasks; }
+export async function listSocialTasks() { return []; }
 
 
 

@@ -2,13 +2,14 @@
 import { getArcSessionToken } from './arcSession.js';
 
 const API = import.meta.env.VITE_ARC_TASKS_API || '/api/arc-tasks';
-const ARC_CHAIN_ID = 5042;
+const ARC_CHAIN_ID = 56;
 const alertedPaidTasks = new Set();
 const RETIRED_TASK_TITLES = new Set([
   'design dark-canvas sovereign agent card assets',
   'build an opera minipay deep-link widget',
   'forex spot rate verification (usdc / ngn)',
   'defi tvl & price benchmark feed on arc mainnet',
+  'supply defi tvl & protocol liquidity rankings for arc agents',
   'weather & city commerce oracle telemetry',
   'sub-second settlement benchmark on arc mainnet',
   'monitor the arc mainnet tag',
@@ -24,16 +25,28 @@ const TASK_CATEGORY_LABELS = {
 };
 
 function mapTask(row) {
+  const rewardToken = String(row.reward_token || 'BNB').toUpperCase();
+  const rewardBNB = row.reward_bnb != null ? Number(row.reward_bnb) : (rewardToken === 'BNB' ? Number(row.reward_usdc || 0.005) : null);
+  const rewardUSDC = Number(row.reward_usdc || 0);
   return {
-    id: row.id, chainId: Number(row.chain_id), title: row.title, description: row.description,
+    id: row.id,
+    chainId: Number(row.chain_id || 56),
+    title: row.title,
+    description: row.description,
     category: row.category,
     categoryLabel: TASK_CATEGORY_LABELS[String(row.category || '').toLowerCase()] || row.category_label || 'Task',
     creatorTag: row.creator_tag,
-    deliverable: row.deliverable, rewardUSDC: Number(row.reward_usdc), points: Number(row.points),
-    deadline: row.deadline_label, status: row.status,
-    escrowStatus: row.escrow_status === 'not_integrated' ? 'Escrow Protected (Arc Mainnet)' : (row.escrow_status || 'Escrow Protected (Arc Mainnet)'),
-    escrowContract: row.escrow_contract || '0x69f1af5b02703ad0f9e59892e6bc472b6c5599ab',
-    participantCount: Number(row.participant_count) || 0, createdAt: row.created_at,
+    deliverable: row.deliverable,
+    rewardToken,
+    rewardBNB: rewardBNB ?? (rewardToken === 'BNB' ? 0.005 : null),
+    rewardUSDC,
+    points: Number(row.points || 0),
+    deadline: row.deadline_label,
+    status: row.status,
+    escrowStatus: row.escrow_status === 'not_integrated' ? 'Escrow Protected (BNB Chain)' : (row.escrow_status || 'Escrow Protected (BNB Chain)'),
+    escrowContract: row.escrow_contract || '0x0fcdf115e1cff7b85835cd8ccdc0a66c8c9a95f7',
+    participantCount: Number(row.participant_count) || 0,
+    createdAt: row.created_at,
   };
 }
 function mapProgress(progress) {
@@ -75,14 +88,22 @@ export async function listArcTasks(walletAddress = '') {
 export async function createArcTask({ walletAddress, sessionToken, task }) {
   if (!walletAddress) throw new Error('Sign in to post a task.');
   const taskId = `task_${crypto.randomUUID().replaceAll('-', '')}`;
+  const rewardToken = String(task.rewardToken || 'BNB').toUpperCase();
+  const rewardAmount = Number(task.rewardAmount || task.rewardBNB || task.rewardUSDC || (rewardToken === 'BNB' ? 0.005 : 10));
   const taskDetails = {
-    title: String(task.title || '').trim().slice(0, 120), category: String(task.category || 'community'),
-    description: String(task.description || '').trim().slice(0, 2000), deliverable: String(task.deliverable || '').trim().slice(0, 500),
-    rewardUSDC: Number(task.rewardUSDC), deadline: String(task.deadline || 'Open until closed').trim().slice(0, 80),
+    title: String(task.title || '').trim().slice(0, 120),
+    category: String(task.category || 'dev'),
+    description: String(task.description || '').trim().slice(0, 2000),
+    deliverable: String(task.deliverable || task.description || '').trim().slice(0, 500),
+    rewardToken,
+    rewardBNB: rewardToken === 'BNB' ? rewardAmount : 0,
+    rewardUSDC: rewardToken !== 'BNB' ? rewardAmount : 0,
+    rewardAmount,
+    deadline: String(task.deadline || 'Open until closed').trim().slice(0, 80),
   };
   const timestamp = Date.now();
   const detailsHash = await sha256Hex(JSON.stringify(taskDetails));
-  const message = ['NairaTag Arc Tasks', 'Action: create', `Task: ${taskId}`, `Wallet: ${walletAddress.toLowerCase()}`, `Chain: ${ARC_CHAIN_ID}`, `Timestamp: ${timestamp}`, `Task details SHA-256: ${detailsHash}`].join('\n');
+  const message = ['NairaTag Tasks', 'Action: create', `Task: ${taskId}`, `Wallet: ${walletAddress.toLowerCase()}`, `Chain: ${ARC_CHAIN_ID}`, `Timestamp: ${timestamp}`, `Task details SHA-256: ${detailsHash}`].join('\n');
   const provider = window.ethereum;
   if (!sessionToken && !provider?.request) throw new Error('Sign in again to authorize this task.');
   const signature = sessionToken ? '0x' : await provider.request({ method: 'personal_sign', params: [message, walletAddress] });

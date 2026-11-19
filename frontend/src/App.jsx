@@ -1517,8 +1517,9 @@ function ArcAppShell() {
   const [postTaskForm, setPostTaskForm] = useState({
     title: '',
     category: 'dev',
-    reward: '35',
-    deadline: '3 days left',
+    rewardToken: 'BNB',
+    reward: '0.005',
+    deadline: 'Open until closed',
     description: '',
     requirements: '',
   });
@@ -2450,7 +2451,8 @@ function ArcAppShell() {
     }
     const title = postTaskForm.title.trim();
     const description = postTaskForm.description.trim();
-    const rewardUSDC = Number(postTaskForm.reward);
+    const rewardToken = postTaskForm.rewardToken || 'BNB';
+    const rewardAmount = Number(postTaskForm.reward);
     if (title.length < 4) {
       showToast('Task titles must be at least 4 characters.', 'error');
       return;
@@ -2459,9 +2461,8 @@ function ArcAppShell() {
       showToast('Describe the task and what counts as completion.', 'error');
       return;
     }
-    if (!Number.isFinite(rewardUSDC) || rewardUSDC <= 0 || rewardUSDC > 1000000
-      || Math.abs(rewardUSDC * 1000000 - Math.round(rewardUSDC * 1000000)) > 0.000001) {
-      showToast('Enter a valid USDC reward with up to 6 decimal places.', 'error');
+    if (!Number.isFinite(rewardAmount) || rewardAmount <= 0 || rewardAmount > 1000000) {
+      showToast(`Enter a valid ${rewardToken} reward greater than zero.`, 'error');
       return;
     }
     setIsTaskCreating(true);
@@ -2470,14 +2471,21 @@ function ArcAppShell() {
         walletAddress,
         sessionToken: getArcSessionToken(walletAddress),
         task: {
-          title, category: postTaskForm.category, description,
-          deliverable: description, rewardUSDC, deadline: 'Open until closed',
+          title,
+          category: postTaskForm.category,
+          description,
+          deliverable: description,
+          rewardToken,
+          rewardBNB: rewardToken === 'BNB' ? rewardAmount : 0,
+          rewardUSDC: rewardToken !== 'BNB' ? rewardAmount : 0,
+          rewardAmount,
+          deadline: 'Open until closed',
         },
       });
       setBackendTasks((current) => [task, ...current.filter((item) => item.id !== task.id)]);
       setTasksRefreshKey((key) => key + 1);
       setCreatedTask(task);
-      setPostTaskForm({ title: '', category: 'dev', reward: '35', deadline: 'Open until closed', description: '', requirements: '' });
+      setPostTaskForm({ title: '', category: 'dev', rewardToken: 'BNB', reward: '0.005', deadline: 'Open until closed', description: '', requirements: '' });
       triggerCelebrationConfetti();
     } catch (error) {
       showToast(error.message || 'Task could not be posted. Please try again.', 'error', 5000);
@@ -4481,33 +4489,35 @@ function ArcAppShell() {
                   <aside className="task-detail-sidebar">
                     <article className="task-detail-panel task-reward-panel">
                       <span className="task-detail-eyebrow">REWARD</span>
-                      <strong>${selectedTask.rewardUSDC} <small>USDC</small></strong>
-                      <span>+{selectedTask.points} points after approval</span>
+                      <strong style={{ color: '#F0B90B' }}>
+                        {selectedTask.rewardToken === 'USDC' ? `$${selectedTask.rewardUSDC} USDC` : `${selectedTask.rewardBNB || selectedTask.rewardUSDC || '0.005'} BNB`}
+                      </strong>
+                      <span>+{selectedTask.points || 0} points after approval</span>
                     </article>
 
                     <article className="task-detail-panel" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 700, color: '#10b981' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 700, color: '#F0B90B' }}>
                         <ShieldCheck size={16} />
-                        <span>BNB Chain Escrow</span>
+                        <span>BNB Chain Escrow Protected</span>
                       </div>
                       <div style={{ fontSize: '11px', color: 'var(--privy-color-foreground-2)', lineHeight: 1.4 }}>
-                        Protected by <a href="https://bscscan.com/address/0x0fcdf115e1cff7b85835cd8ccdc0a66c8c9a95f7" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--privy-color-interactive)', textDecoration: 'underline' }}>NairaTag Contracts on BNB Chain</a>.
+                        Protected by <a href="https://bscscan.com/address/0x0fcdf115e1cff7b85835cd8ccdc0a66c8c9a95f7" target="_blank" rel="noopener noreferrer" style={{ color: '#F0B90B', textDecoration: 'underline' }}>NairaTag Contracts on BNB Chain</a>.
                       </div>
                       {taskProgress[selectedTask.id]?.status === 'submitted' && (
                         <button
                           type="button"
                           className="btn-agent-primary"
-                          style={{ marginTop: '4px', width: '100%', justifyContent: 'center', background: '#10b981', color: '#fff' }}
+                          style={{ marginTop: '4px', width: '100%', justifyContent: 'center', background: '#F0B90B', color: '#000', fontWeight: 700 }}
                           onClick={() => handleReleaseEscrowPayout(selectedTask)}
                           disabled={isEscrowProcessing}
                         >
                           <ShieldCheck size={14} />
-                          <span>{isEscrowProcessing ? 'Releasing on Arc…' : 'Release USDC Escrow Payout'}</span>
+                          <span>{isEscrowProcessing ? 'Releasing on BNB Chain…' : 'Release BNB Escrow Payout'}</span>
                         </button>
                       )}
                       {taskProgress[selectedTask.id]?.status === 'paid' && (
-                        <div style={{ padding: '6px 8px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '6px', fontSize: '11px', color: '#10b981', fontWeight: 600 }}>
-                          ✓ Bounty paid on-chain in USDC
+                        <div style={{ padding: '6px 8px', background: 'rgba(240, 185, 11, 0.1)', border: '1px solid rgba(240, 185, 11, 0.3)', borderRadius: '6px', fontSize: '11px', color: '#F0B90B', fontWeight: 600 }}>
+                          ✓ Bounty paid on-chain in BNB
                         </div>
                       )}
                     </article>
@@ -4718,10 +4728,10 @@ function ArcAppShell() {
 
                         <div className="milestone-earnings-row">
                           <span className="milestone-earnings-label">Reward</span>
-                          <span className="milestone-earnings-value" style={{ color: '#10B981' }}>
+                          <span className="milestone-earnings-value" style={{ color: '#F0B90B', fontWeight: 800 }}>
                             {task.isVoucherTask
                               ? (isDone ? 'Earned' : `+${task.points} Points`)
-                              : (isDone ? 'Paid' : `$${task.rewardUSDC} USDC`)}
+                              : (isDone ? 'Paid' : `${task.rewardToken === 'USDC' ? `$${task.rewardUSDC} USDC` : `${task.rewardBNB || task.rewardUSDC || '0.005'} BNB`}`)}
                           </span>
                         </div>
                       </div>
@@ -6024,20 +6034,22 @@ function ArcAppShell() {
                 <div className="task-created-success-icon"><CheckCircle2 size={24} /></div>
                 <h2>Task created successfully</h2>
                 <strong className="task-created-title">{createdTask.title}</strong>
-                <p>Your task is live. Users will see it in Tasks and receive an in-app notification.</p>
-                <div className="task-created-reward">Reward: ${Number(createdTask.rewardUSDC).toLocaleString(undefined, { maximumFractionDigits: 6 })} USDC</div>
+                <p>Your task is live. Agents and users will see it in Tasks and receive an on-chain bounty notification.</p>
+                <div className="task-created-reward" style={{ color: '#F0B90B', fontWeight: 800 }}>
+                  Reward: {createdTask.rewardToken === 'USDC' ? `$${Number(createdTask.rewardUSDC).toLocaleString(undefined, { maximumFractionDigits: 6 })} USDC` : `${createdTask.rewardBNB || createdTask.rewardAmount || createdTask.rewardUSDC} ${createdTask.rewardToken || 'BNB'}`}
+                </div>
                 <div className="task-created-share-actions">
                   <a
-                    href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`New task on NairaTag: ${createdTask.title}. Reward: $${createdTask.rewardUSDC} USDC.`)}&url=${encodeURIComponent('https://arc.nairatag.ng/#tasks')}`}
+                    href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`New task on NairaTag (BNB Chain): ${createdTask.title}. Reward: ${createdTask.rewardToken === 'USDC' ? '$' + createdTask.rewardUSDC + ' USDC' : (createdTask.rewardBNB || createdTask.rewardAmount || createdTask.rewardUSDC) + ' ' + (createdTask.rewardToken || 'BNB')}.`)}&url=${encodeURIComponent('https://bnb.nairatag.ng/#tasks')}`}
                     target="_blank"
                     rel="noopener noreferrer"
                   ><Share2 size={14} /> Share on X</a>
                   <a
-                    href={getTelegramShareIntentUrl({ text: `New task on NairaTag: ${createdTask.title}. Reward: $${createdTask.rewardUSDC} USDC.`, url: 'https://arc.nairatag.ng/#tasks' })}
+                    href={getTelegramShareIntentUrl({ text: `New task on NairaTag (BNB Chain): ${createdTask.title}. Reward: ${createdTask.rewardToken === 'USDC' ? '$' + createdTask.rewardUSDC + ' USDC' : (createdTask.rewardBNB || createdTask.rewardAmount || createdTask.rewardUSDC) + ' ' + (createdTask.rewardToken || 'BNB')}.`, url: 'https://bnb.nairatag.ng/#tasks' })}
                     target="_blank"
                     rel="noopener noreferrer"
                   ><Send size={14} /> Share on Telegram</a>
-                  <button type="button" onClick={() => triggerCopy('created_task_link', 'https://arc.nairatag.ng/#tasks')}>
+                  <button type="button" onClick={() => triggerCopy('created_task_link', 'https://bnb.nairatag.ng/#tasks')}>
                     <Copy size={14} /> Copy task link
                   </button>
                 </div>
@@ -6057,7 +6069,7 @@ function ArcAppShell() {
                   type="text"
                   className="token-amount-field"
                   style={{ width: '100%', fontSize: '13px', padding: '8px 10px', marginTop: '4px' }}
-                  placeholder="e.g. Build Webhook Listener for Arc Osaka"
+                  placeholder="e.g. Build Webhook Listener for Agent ID on BNB Chain"
                   value={postTaskForm.title}
                   onChange={(e) => setPostTaskForm((prev) => ({ ...prev, title: e.target.value }))}
                   minLength={4}
@@ -6085,24 +6097,60 @@ function ArcAppShell() {
                   </select>
                 </div>
 
+                <div style={{ width: '105px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--privy-color-foreground-2)', textTransform: 'uppercase' }}>
+                    Currency
+                  </label>
+                  <select
+                    className="token-amount-field"
+                    style={{
+                      width: '100%',
+                      fontSize: '12px',
+                      padding: '8px',
+                      marginTop: '4px',
+                      cursor: 'pointer',
+                      border: postTaskForm.rewardToken === 'BNB' ? '1px solid rgba(240, 185, 11, 0.45)' : undefined,
+                      color: postTaskForm.rewardToken === 'BNB' ? '#F0B90B' : undefined,
+                      fontWeight: 750,
+                    }}
+                    value={postTaskForm.rewardToken || 'BNB'}
+                    onChange={(e) => {
+                      const token = e.target.value;
+                      setPostTaskForm((prev) => ({
+                        ...prev,
+                        rewardToken: token,
+                        reward: token === 'BNB' ? '0.005' : '10',
+                      }));
+                    }}
+                  >
+                    <option value="BNB">🟡 BNB</option>
+                    <option value="USDT">💵 USDT</option>
+                    <option value="USDC">🔵 USDC</option>
+                  </select>
+                </div>
+
                 <div style={{ flex: 1 }}>
                   <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--privy-color-foreground-2)', textTransform: 'uppercase' }}>
-                    Reward (USDC)
+                    Reward ({postTaskForm.rewardToken || 'BNB'})
                   </label>
                   <input
                     type="number"
                     className="token-amount-field"
                     style={{ width: '100%', fontSize: '13px', padding: '8px 10px', marginTop: '4px' }}
-                    placeholder="35"
+                    placeholder={postTaskForm.rewardToken === 'BNB' ? '0.005' : '10'}
                     value={postTaskForm.reward}
                     onChange={(e) => setPostTaskForm((prev) => ({ ...prev, reward: e.target.value }))}
-                    min="0.000001"
+                    min={postTaskForm.rewardToken === 'BNB' ? '0.0001' : '0.01'}
                     max="1000000"
-                    step="0.000001"
+                    step={postTaskForm.rewardToken === 'BNB' ? '0.0001' : '0.01'}
                     required
                   />
                   <div style={{ fontSize: '10px', color: 'var(--privy-color-foreground-2)', marginTop: '2px' }}>
-                    ≈ ₦{((parseFloat(postTaskForm.reward) || 0) * 1485).toLocaleString()} NGN
+                    {postTaskForm.rewardToken === 'BNB' ? (
+                      <>≈ ${((parseFloat(postTaskForm.reward) || 0) * 650).toFixed(2)} USD</>
+                    ) : (
+                      <>≈ ₦{((parseFloat(postTaskForm.reward) || 0) * 1485).toLocaleString()} NGN</>
+                    )}
                   </div>
                 </div>
               </div>
@@ -6124,13 +6172,13 @@ function ArcAppShell() {
                 />
               </div>
 
-              <div style={{ padding: '9px 11px', background: 'rgba(16, 185, 129, 0.08)', borderRadius: '6px', border: '1px solid rgba(16, 185, 129, 0.25)', fontSize: '11px', color: '#10b981', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+              <div style={{ padding: '9px 11px', background: 'rgba(240, 185, 11, 0.08)', borderRadius: '6px', border: '1px solid rgba(240, 185, 11, 0.25)', fontSize: '11px', color: '#F0B90B', display: 'flex', flexDirection: 'column', gap: '3px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 700 }}>
                   <ShieldCheck size={13} />
                   <span>BNB Chain Bounty Escrow</span>
                 </div>
                 <span style={{ fontSize: '10.5px', color: 'var(--privy-color-foreground-2)' }}>
-                  Connected to <a href="https://bscscan.com/address/0x0fcdf115e1cff7b85835cd8ccdc0a66c8c9a95f7" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--privy-color-interactive)', textDecoration: 'underline' }}>0x0fcd...95f7</a> on BNB Chain. Task rewards are held in escrow upon verified completion.
+                  Connected to <a href="https://bscscan.com/address/0x0fcdf115e1cff7b85835cd8ccdc0a66c8c9a95f7" target="_blank" rel="noopener noreferrer" style={{ color: '#F0B90B', textDecoration: 'underline' }}>0x0fcd...95f7</a> on BNB Chain. Task rewards are held in escrow upon verified completion.
                 </span>
               </div>
 
