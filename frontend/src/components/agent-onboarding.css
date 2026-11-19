@@ -1,0 +1,444 @@
+/* Compact, modern Agent Onboarding styles */
+.agent-onboard-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  overflow-y: auto;
+}
+
+.agent-onboard {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  max-height: min(88vh, 600px);
+  overflow-y: auto;
+  border-radius: 20px;
+  background: var(--surface1, #ffffff);
+  color: var(--privy-color-foreground, #171717);
+  border: 1px solid var(--border, #e5e5e5);
+  padding: 18px 18px 16px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.16);
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+}
+
+.agent-onboard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #5b4fff 0%, #06b6d4 100%);
+  border-radius: 20px 20px 0 0;
+}
+
+.agent-onboard-close {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  border: 0;
+  background: var(--surface3, #f5f5f5);
+  color: var(--privy-color-foreground-2, #666);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.18s ease;
+  z-index: 3;
+}
+.agent-onboard-close:hover {
+  background: var(--surface2, #eee);
+  color: #111;
+}
+
+.agent-onboard-intro {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 6px 0 12px;
+}
+
+.agent-onboard-face {
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+  border: 1.5px solid var(--border, #e5e5e5);
+  background: var(--surface3, #f7f7f7);
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(91, 79, 255, 0.08);
+}
+.agent-onboard-face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+.agent-onboard-avatar-initial {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--primary, #5b4fff);
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.agent-onboard-intro-copy {
+  flex: 1;
+  min-width: 0;
+}
+.agent-onboard-intro-copy h2 {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 2px;
+  color: var(--privy-color-foreground, #171717);
+}
+.agent-onboard-intro-copy p {
+  font-size: 12px;
+  color: var(--privy-color-foreground-2, #666);
+  margin: 0;
+}
+
+.agent-onboard-avatar-upload {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  border: 1px solid var(--primary-border, rgba(91, 79, 255, 0.22));
+  border-radius: 9px;
+  background: var(--primary-tint, rgba(91, 79, 255, 0.08));
+  color: var(--primary, #5b4fff);
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+.agent-onboard-avatar-upload:hover {
+  background: var(--primary-border, rgba(91, 79, 255, 0.15));
+}
+.agent-onboard-avatar-upload input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.agent-onboard-selfie {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--primary-border, rgba(91, 79, 255, 0.18));
+  background: var(--primary-tint, rgba(91, 79, 255, 0.05));
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+.agent-onboard-selfie img {
+  width: 38px;
+  height: 38px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.agent-onboard-selfie div {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 10.5px;
+}
+.agent-onboard-selfie div strong {
+  font-size: 11px;
+}
+.agent-onboard-selfie div span {
+  color: var(--privy-color-foreground-2, #666);
+}
+.agent-onboard-selfie button {
+  border: 0;
+  border-radius: 7px;
+  background: var(--primary-gradient, linear-gradient(135deg, #5b4fff, #4f46e5));
+  color: #fff;
+  padding: 5px 9px;
+  font-size: 10.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.agent-onboard-progress-card {
+  background: var(--surface2, #f9f9fb);
+  border: 1px solid var(--border, #e5e5e5);
+  border-radius: 12px;
+  padding: 9px 11px;
+  margin-bottom: 10px;
+}
+.agent-onboard-progress-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.agent-onboard-progress-heading strong {
+  font-size: 11.5px;
+  font-weight: 650;
+}
+.agent-onboard-progress-heading b {
+  font-size: 12.5px;
+  color: var(--primary, #5b4fff);
+  position: relative;
+  white-space: nowrap;
+  font-weight: 700;
+}
+.agent-onboard-progress-heading b i {
+  position: absolute;
+  right: 0;
+  top: -16px;
+  white-space: nowrap;
+  color: #059669;
+  font-size: 10.5px;
+  font-style: normal;
+  animation: onboard-points 0.75s ease-out both;
+}
+.agent-onboard-track {
+  height: 5px;
+  border-radius: 10px;
+  background: var(--surface3, #f0efff);
+  overflow: hidden;
+  margin: 6px 0 2px;
+}
+.agent-onboard-track span {
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #5b4fff, #06b6d4);
+  position: relative;
+  overflow: hidden;
+  transition: width 0.65s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.agent-onboard-track span:after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  transform: translateX(-100%);
+  animation: onboard-shimmer 2s ease-in-out infinite;
+}
+
+.agent-onboard-steps {
+  background: var(--surface1, #fff);
+  border: 1px solid var(--border, #e5e5e5);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.agent-onboard-step {
+  display: grid;
+  grid-template-columns: 20px 1fr auto;
+  gap: 9px;
+  align-items: start;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border, #f0f0f0);
+  min-height: 38px;
+  transition: background 0.18s ease;
+}
+.agent-onboard-step:last-child {
+  border-bottom: 0;
+}
+.agent-onboard-step:hover {
+  background: var(--primary-tint, rgba(91, 79, 255, 0.03));
+}
+.agent-onboard-step-icon {
+  margin-top: 1px;
+  width: 17px;
+  height: 17px;
+  border: 1.5px solid #a3a3a3;
+  color: #a3a3a3;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+.agent-onboard-step.is-done .agent-onboard-step-icon {
+  border-color: #059669;
+  background: #ecfdf5;
+  color: #059669;
+  animation: onboard-pop 0.35s ease both;
+}
+.agent-onboard-step-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.agent-onboard-step-content strong {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--privy-color-foreground, #171717);
+}
+.agent-onboard-step > b {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #059669;
+  white-space: nowrap;
+  padding-top: 1px;
+}
+.agent-onboard-step > b.pending {
+  color: var(--primary, #5b4fff);
+}
+
+.agent-onboard-choices {
+  display: flex;
+  gap: 5px;
+  margin-top: 3px;
+}
+.agent-onboard-choices button {
+  border: 1px solid var(--border, #e5e5e5);
+  background: var(--surface2, #f9f9fb);
+  border-radius: 7px;
+  width: 30px;
+  height: 30px;
+  font-size: 16px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, outline 0.15s ease;
+}
+.agent-onboard-choices button:hover {
+  transform: scale(1.08);
+}
+.agent-onboard-choices button.selected {
+  outline: 2px solid var(--primary, #5b4fff);
+  outline-offset: 1px;
+  background: var(--primary-tint, rgba(91, 79, 255, 0.08));
+}
+
+.agent-onboard-privacy {
+  display: block;
+  font-size: 10px !important;
+  color: var(--privy-color-foreground-2, #888);
+  margin-top: 2px !important;
+}
+
+.agent-onboard-step select {
+  width: min(100%, 200px);
+  margin-top: 3px;
+  border: 1px solid var(--border, #e5e5e5);
+  border-radius: 7px;
+  padding: 4px 7px;
+  background: var(--surface1, #fff);
+  color: var(--privy-color-foreground, #171717);
+  font: inherit;
+  font-size: 11px;
+}
+.agent-onboard-step select:focus {
+  outline: 2px solid var(--primary, #5b4fff);
+  outline-offset: 1px;
+}
+
+.agent-onboard-permission {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  color: var(--privy-color-foreground-2, #666);
+  margin-top: 2px;
+  cursor: pointer;
+}
+.agent-onboard-permission input {
+  accent-color: var(--primary, #5b4fff);
+}
+
+.agent-onboard-error {
+  border-radius: 8px;
+  padding: 6px 9px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+
+.agent-onboard-continue {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  border: 0;
+  border-radius: 11px;
+  padding: 9px 12px;
+  background: var(--primary-gradient, linear-gradient(135deg, #5b4fff, #4f46e5));
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(91, 79, 255, 0.2);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.agent-onboard-continue:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(91, 79, 255, 0.28);
+}
+.agent-onboard-continue:active {
+  transform: translateY(0);
+}
+.agent-onboard-continue span {
+  font-size: 15px;
+}
+.agent-onboard button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+@keyframes onboard-shimmer {
+  55%, 100% { transform: translateX(120%); }
+}
+@keyframes onboard-pop {
+  0% { transform: scale(0.7); }
+  70% { transform: scale(1.16); }
+  100% { transform: scale(1); }
+}
+@keyframes onboard-points {
+  from { transform: translateY(8px); opacity: 0; }
+  30% { opacity: 1; }
+  to { transform: translateY(-8px); opacity: 0; }
+}
+
+@media (max-width: 560px) {
+  .agent-onboard-backdrop {
+    padding: 10px;
+  }
+  .agent-onboard {
+    width: 100%;
+    max-width: 390px;
+    max-height: 90dvh;
+    border-radius: 18px;
+    padding: 15px 14px 13px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .agent-onboard *, .agent-onboard *:before, .agent-onboard *:after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
