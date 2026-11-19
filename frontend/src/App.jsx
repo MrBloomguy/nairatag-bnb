@@ -2189,6 +2189,35 @@ function ArcAppShell() {
     }
   };
 
+  const handleConnectAddress = async (rawInput) => {
+    if (!rawInput) return;
+    let target = rawInput.trim();
+    if (!isAddress(target)) {
+      try {
+        const clean = target.replace(/^[₦$@#]/, '').toLowerCase();
+        const resolved = await resolveArcTagToAddress(clean);
+        if (resolved && isAddress(resolved)) {
+          target = resolved;
+        } else {
+          showToast('Enter a valid BNB Chain address (0x...) or registered ₦Tag', 'error', 3500);
+          return;
+        }
+      } catch {
+        showToast('Enter a valid BNB Chain address (0x...) or registered ₦Tag', 'error', 3500);
+        return;
+      }
+    }
+    const cleanAddr = getAddress(target);
+    setWalletAddress(cleanAddr);
+    setAuthProvider('address');
+    setChainId(activeArcChain.id);
+    setIsArcNetwork(true);
+    await refreshBalance(cleanAddr);
+    getArcRewardState(cleanAddr).then(applyArcRewardState).catch(() => {});
+    setIsConnectModalOpen(false);
+    showToast(`Signed in as ${cleanAddr.slice(0, 6)}...${cleanAddr.slice(-4)}`, 'success', 2500);
+  };
+
   // Switch to Arc
   const handleSwitchNetwork = async () => {
     try {
@@ -3362,14 +3391,7 @@ function ArcAppShell() {
               type="button"
               className="wallet-btn-pill header-connect-pill"
               disabled={isConnecting}
-              onClick={() => {
-                const hasInjected = typeof window !== 'undefined' && Boolean(window.ethereum || window.BinanceChain);
-                if (hasInjected) {
-                  handleConnect();
-                } else {
-                  setIsConnectModalOpen(true);
-                }
-              }}
+              onClick={() => setIsConnectModalOpen(true)}
             >
               <ShieldCheck size={16} />
               <span>{isConnecting ? 'Connecting…' : 'Sign in'}</span>
@@ -3402,6 +3424,34 @@ function ArcAppShell() {
             </div>
 
             <div className="mobile-drawer-links">
+              {!walletAddress && (
+                <button
+                  type="button"
+                  className="btn-action-primary"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    setIsConnectModalOpen(true);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    margin: '8px 0 16px 0',
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '12px',
+                    fontWeight: 700,
+                    background: '#F0B90B',
+                    color: '#000000',
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <ShieldCheck size={18} />
+                  <span>Sign in with Wallet</span>
+                </button>
+              )}
               <div className="mobile-nav-section-label">Your pages</div>
               <button
                 type="button"
@@ -6367,6 +6417,7 @@ function ArcAppShell() {
           isConnecting={isConnecting}
           authStatus={isConnecting ? 'Requesting wallet approval…' : ''}
           handleConnect={(type) => handleConnect(type)}
+          handleConnectAddress={handleConnectAddress}
         />
       )}
     </>
