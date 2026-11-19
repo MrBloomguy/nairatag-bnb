@@ -445,6 +445,38 @@ test("4.7. Bloom: Event Log Anti-Tampering - Recipient, Token, and Amount Mismat
   });
   assert.equal(tokenMismatch.success, false);
   assert.equal(tokenMismatch.error?.code, "TOKEN_CONTRACT_MISMATCH");
+
+  // Case D: Sender mismatch in event log (Transfer.from is attacker instead of authorized sender)
+  const wrongSenderLog = {
+    address: tokenAddress,
+    topics: [
+      "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "0x0000000000000000000000003c44cdddb6a900fa2b585dd299e03d12fa4293bc", // Attacker sender!
+      "0x00000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8",
+    ],
+    data: "0x0000000000000000000000000000000000000000000000004563918244f40000",
+  };
+
+  const senderMismatch = await adapter.execute({
+    amount: "5.0",
+    currency: "USDC",
+    recipient: mockTo,
+    sender: mockFrom,
+    authorization: { isAuthorized: true, signature: "0xvalid" },
+    testSeam: {
+      receipt: {
+        status: "success",
+        blockNumber: 42001000n,
+        transactionHash: mockTxHash,
+        from: mockFrom,
+        to: tokenAddress,
+        gasUsed: 45000n,
+        logs: [wrongSenderLog],
+      },
+    },
+  });
+  assert.equal(senderMismatch.success, false);
+  assert.equal(senderMismatch.error?.code, "TRANSFER_SENDER_MISMATCH");
 });
 
 test("4.8. Bloom: Reverted On-Chain Transaction Detection", async (t) => {
@@ -477,6 +509,187 @@ test("4.8. Bloom: Reverted On-Chain Transaction Detection", async (t) => {
   assert.ok(result.onChainReceipt);
   assert.equal(result.onChainReceipt.status, "reverted");
   assert.equal(result.error?.code, "TRANSACTION_REVERTED");
+});
+
+test("4.9. Bloom: Native BNB Deep Settlement Verification (Valid & Negative Checks)", async (t) => {
+  const adapter = new BloomAdapter();
+  const mockTxHash = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+  const mockFrom = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
+  const mockTo = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
+  const attacker = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC";
+  const expectedAtomic = 500000000000000000n; // 0.5 BNB (18 decimals)
+
+  // 1. Valid Native BNB Transfer
+  const validNative = await adapter.execute({
+    amount: "0.5",
+    currency: "BNB",
+    recipient: mockTo,
+    sender: mockFrom,
+    authorization: { isAuthorized: true, signature: "0xvalid" },
+    testSeam: {
+      receipt: {
+        status: "success",
+        blockNumber: 42001005n,
+        transactionHash: mockTxHash,
+        from: mockFrom,
+        to: mockTo,
+        gasUsed: 21000n,
+        logs: [],
+      },
+      transaction: {
+        from: mockFrom,
+        to: mockTo,
+        value: expectedAtomic,
+        chainId: 97,
+      },
+    },
+  });
+
+  assert.equal(validNative.success, true);
+  assert.equal(validNative.paymentCompleted, true);
+  assert.equal(validNative.data?.amount, "0.5");
+  assert.equal(validNative.data?.currency, "BNB");
+  assert.equal(validNative.data?.protocolRail, "NairaTag Direct Payment (BSC Testnet)");
+
+  // 2. Native Sender Mismatch (Broadcaster / tx.from is attacker)
+  const senderMismatch = await adapter.execute({
+    amount: "0.5",
+    currency: "BNB",
+    recipient: mockTo,
+    sender: mockFrom,
+    authorization: { isAuthorized: true, signature: "0xvalid" },
+    testSeam: {
+      receipt: {
+        status: "success",
+        blockNumber: 42001005n,
+        transactionHash: mockTxHash,
+        from: attacker,
+        to: mockTo,
+        gasUsed: 21000n,
+        logs: [],
+      },
+      transaction: {
+        from: attacker,
+        to: mockTo,
+        value: expectedAtomic,
+      },
+    },
+  });
+  assert.equal(senderMismatch.success, false);
+  assert.equal(senderMismatch.error?.code, "NATIVE_SENDER_MISMATCH");
+
+  // 3. Native Recipient Mismatch (Funds went to attacker)
+  const recipientMismatch = await adapter.execute({
+    amount: "0.5",
+    currency: "BNB",
+    recipient: mockTo,
+    sender: mockFrom,
+    authorization: { isAuthorized: true, signature: "0xvalid" },
+    testSeam: {
+      receipt: {
+        status: "success",
+        blockNumber: 42001005n,
+        transactionHash: mockTxHash,
+        from: mockFrom,
+        to: attacker,
+        gasUsed: 21000n,
+        logs: [],
+      },
+      transaction: {
+        from: mockFrom,
+        to: attacker,
+        value: expectedAtomic,
+      },
+    },
+  });
+  assert.equal(recipientMismatch.success, false);
+  assert.equal(recipientMismatch.error?.code, "NATIVE_RECIPIENT_MISMATCH");
+
+  // 4. Native Amount Mismatch (Only sent 0.1 BNB instead of 0.5)
+  const amountMismatch = await adapter.execute({
+    amount: "0.5",
+    currency: "BNB",
+    recipient: mockTo,
+    sender: mockFrom,
+    authorization: { isAuthorized: true, signature: "0xvalid" },
+    testSeam: {
+      receipt: {
+        status: "success",
+        blockNumber: 42001005n,
+        transactionHash: mockTxHash,
+        from: mockFrom,
+        to: mockTo,
+        gasUsed: 21000n,
+        logs: [],
+      },
+      transaction: {
+        from: mockFrom,
+        to: mockTo,
+        value: 100000000000000000n, // 0.1 BNB
+      },
+    },
+  });
+  assert.equal(amountMismatch.success, false);
+  assert.equal(amountMismatch.error?.code, "NATIVE_AMOUNT_MISMATCH");
+});
+
+test("4.10. Bloom: Wallet Authorization Binding (Unapproved Key Substitution Blocked)", async (t) => {
+  const adapter = new BloomAdapter();
+  const authorizedUser = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
+  const substituteKey = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"; // Attacker account
+
+  const origKey = process.env.BNB_TESTNET_PRIVATE_KEY;
+  try {
+    process.env.BNB_TESTNET_PRIVATE_KEY = substituteKey;
+
+    const res = await adapter.execute(
+      {
+        amount: "1.0",
+        currency: "USDC",
+        recipient: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+        sender: authorizedUser, // User authorized their own wallet
+        authorization: { isAuthorized: true, signature: "0xvalid" },
+      },
+      { transport: "live" }
+    );
+
+    assert.equal(res.success, false);
+    assert.equal(res.error?.code, "WALLET_AUTHORIZATION_MISMATCH");
+    assert.match(res.error?.message || "", /does not match authorized sender/i);
+  } finally {
+    process.env.BNB_TESTNET_PRIVATE_KEY = origKey;
+  }
+});
+
+test("4.11. Bloom: Tag Normalization & Namehash Parity with NairaTagRegistry.sol", async (t) => {
+  const { canonicalizeTag, computeTagNode } = await import(
+    "../app/agent/src/services/specialists/bloomAdapter.js"
+  );
+
+  // 1. Prohibited character '@'
+  assert.throws(() => canonicalizeTag("@alice"), /'@' is prohibited/i);
+
+  // 2. Leading and trailing underscore prohibited
+  assert.throws(() => canonicalizeTag("_alice"), /underscores cannot be at the start or end/i);
+  assert.throws(() => canonicalizeTag("alice_"), /underscores cannot be at the start or end/i);
+
+  // 3. Consecutive underscores prohibited
+  assert.throws(() => canonicalizeTag("al__ice"), /consecutive underscores are prohibited/i);
+
+  // 4. Length bounds (3..32)
+  assert.throws(() => canonicalizeTag("ab"), /must be between 3 and 32 characters/i);
+  assert.throws(() => canonicalizeTag("a".repeat(33)), /must be between 3 and 32 characters/i);
+
+  // 5. Valid tags normalized identically
+  assert.equal(canonicalizeTag("₦ALICE"), "alice");
+  assert.equal(canonicalizeTag("₦Alice_123"), "alice_123");
+  assert.equal(canonicalizeTag("bob"), "bob");
+
+  // 6. Namehash computation parity
+  const node1 = computeTagNode("₦ALICE");
+  const node2 = computeTagNode("alice");
+  assert.equal(node1, node2);
+  assert.ok(node1.startsWith("0x") && node1.length === 66);
 });
 
 // ===================================================================

@@ -115,7 +115,52 @@ const REGISTRY_READ_ABI = [
     inputs: [{ name: "node", type: "bytes32" }],
     outputs: [{ name: "", type: "address" }],
   },
+  {
+    type: "function",
+    name: "namehash",
+    stateMutability: "pure",
+    inputs: [{ name: "tag", type: "string" }],
+    outputs: [{ name: "", type: "bytes32" }],
+  },
 ] as const;
+
+/**
+ * Normalizes and validates an input tag following the exact normalization rules of NairaTagRegistry.sol:
+ * 1. Strips leading '₦' (UTF-8 0xE2 0x82 0xA6)
+ * 2. Rejects '@' (0x40)
+ * 3. Converts uppercase A-Z (0x41-0x5A) to lowercase a-z (0x61-0x7A)
+ * 4. Validates length is between 3 and 32 characters
+ * 5. Requires characters in [a-z0-9_]
+ * 6. Disallows leading or trailing underscore '_', and disallows consecutive '__'
+ */
+export function canonicalizeTag(rawTag: string): string {
+  let tag = rawTag.trim();
+  if (tag.startsWith("₦")) {
+    tag = tag.slice(1);
+  }
+  if (tag.includes("@")) {
+    throw new Error(`Invalid tag character: '@' is prohibited in NairaTag identities.`);
+  }
+  const clean = tag.toLowerCase();
+  if (clean.length < 3 || clean.length > 32) {
+    throw new Error(`Invalid tag length (${clean.length}): NairaTag must be between 3 and 32 characters.`);
+  }
+  if (!/^[a-z0-9_]+$/.test(clean)) {
+    throw new Error(`Invalid tag character: only alphanumeric characters [a-z0-9] and underscores are permitted.`);
+  }
+  if (clean.startsWith("_") || clean.endsWith("_")) {
+    throw new Error(`Invalid tag format: underscores cannot be at the start or end of a tag.`);
+  }
+  if (clean.includes("__")) {
+    throw new Error(`Invalid tag format: consecutive underscores are prohibited.`);
+  }
+  return clean;
+}
+
+export function computeTagNode(rawTag: string): `0x${string}` {
+  const canonical = canonicalizeTag(rawTag);
+  return keccak256(stringToBytes(canonical));
+}
 
 // BSC Testnet Deployment Addresses
 const TESTNET_CONTRACTS = {
@@ -155,7 +200,15 @@ export interface BloomTestSeam {
   client?: PublicClient;
   txHash?: Hash;
   receipt?: TransactionReceipt;
+  transaction?: {
+    from: `0x${string}`;
+    to?: `0x${string}` | null;
+    value: bigint;
+    chainId?: number;
+    hash?: `0x${string}`;
+  };
   customResolverAddress?: `0x${string}`;
+  customRegistryAddress?: `0x${string}`;
 }
 
 export interface BloomExecutionPayload {
@@ -189,18 +242,21 @@ export interface BloomExecutionPayload {
 export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
   public readonly tag = "₦BLOOM";
   public readonly canonicalName = "bloom";
-  public readonly description = "Authentic sub-second settlement and escrow execution adapter for BNB Chain";
+  public readonly capabilityId = "settlement.usdc";
+  public readonly description = "Authentic direct settlement and payment verification adapter for BNB Chain";
 
   public readonly defaultTestnetRpc = "https://data-seed-prebsc-1-s1.binance.org:8545";
 
   /**
    * Validates and resolves recipient identifier to a valid EVM address.
-   * If a sovereign ₦TAG is passed, queries on-chain NairaTagResolver on BSC Testnet.
+   * If a sovereign ₦TAG is passed, queries on-chain NairaTagResolver on BSC Testnet
+   * using the canonical namehash algorithm from NairaTagRegistry.sol.
    */
   public async resolveRecipient(
     rawRecipient: string,
     client: PublicClient,
-    customResolver?: `0x${string}`
+    customResolver?: `0x${string}`,
+    customRegistry?: `0x${string}`
   ): Promise<`0x${string}`> {
     const clean = rawRecipient.trim();
 
@@ -209,22 +265,11 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
       return getAddress(clean);
     }
 
-    // Sovereign Tag Resolution
-    let tag = clean;
-    if (tag.startsWith("₦")) {
-      tag = tag.slice(1);
-    }
-    if (tag.startsWith("@")) {
-      throw new Error(`Invalid recipient format: '@' symbol is prohibited in NairaTag identities.`);
-    }
-
-    const normTag = tag.toLowerCase().trim();
-    if (normTag.length < 3 || normTag.length > 32) {
-      throw new Error(`Invalid tag length (${normTag.length}): NairaTag must be between 3 and 32 characters.`);
-    }
-
-    const node = keccak256(stringToBytes(normTag));
+    // Sovereign Tag Resolution with exact Registry namehash algorithm
+    const canonical = canonicalizeTag(clean);
+    const node = computeTagNode(canonical);
     const resolverAddress = customResolver ?? TESTNET_CONTRACTS.resolver;
+    const registryAddress = customRegistry ?? TESTNET_CONTRACTS.registry;
 
     try {
       // 1. Query Forward Address on Resolver
@@ -241,7 +286,7 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
 
       // 2. Query Owner on Registry
       const ownerAddr = (await client.readContract({
-        address: TESTNET_CONTRACTS.registry,
+        address: registryAddress,
         abi: REGISTRY_READ_ABI,
         functionName: "owner",
         args: [node],
@@ -255,7 +300,7 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
     }
 
     throw new Error(
-      `UNRESOLVED_RECIPIENT_TAG: Sovereign tag "₦${normTag.toUpperCase()}" is not registered or resolved on BSC Testnet.`
+      `UNRESOLVED_RECIPIENT_TAG: Sovereign tag "₦${canonical.toUpperCase()}" is not registered or resolved on BSC Testnet.`
     );
   }
 
@@ -289,7 +334,7 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
   }
 
   /**
-   * Deep verification of an on-chain transaction receipt.
+   * Deep verification of an on-chain transaction receipt and mined transaction.
    * Proves that the exact token, amount, sender, and recipient were transferred.
    */
   public verifySettlementReceipt(
@@ -300,6 +345,12 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
       expectedAmountAtomic: bigint;
       expectedAmountFormatted: string;
       token: TokenMetadata;
+      transaction?: {
+        from: `0x${string}`;
+        to?: `0x${string}` | null;
+        value: bigint;
+        chainId?: number;
+      };
     }
   ): { verifiedReceipt: OnChainSettlementReceipt; transferEvent?: OnChainTransferEvent } {
     if (receipt.status !== "success") {
@@ -320,11 +371,27 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
       verifiedOnExplorerUrl: `https://testnet.bscscan.com/tx/${receipt.transactionHash}`,
     };
 
-    // 1. Native Currency Transfer Verification
+    // 1. Native BNB Transfer Verification
     if (expected.token.isNative) {
-      if (receipt.to && getAddress(receipt.to).toLowerCase() !== expected.expectedRecipient.toLowerCase()) {
+      if (!expected.transaction) {
         throw new Error(
-          `RECIPIENT_MISMATCH: Native BNB transaction recipient (${receipt.to}) does not match expected (${expected.expectedRecipient}).`
+          `MISSING_TRANSACTION_PAYLOAD: Native BNB settlement verification requires the original transaction data to verify sender, recipient, and amount.`
+        );
+      }
+      const tx = expected.transaction;
+      if (getAddress(tx.from).toLowerCase() !== expected.expectedSender.toLowerCase()) {
+        throw new Error(
+          `NATIVE_SENDER_MISMATCH: Native BNB transaction sender (${tx.from}) does not match expected (${expected.expectedSender}).`
+        );
+      }
+      if (!tx.to || getAddress(tx.to).toLowerCase() !== expected.expectedRecipient.toLowerCase()) {
+        throw new Error(
+          `NATIVE_RECIPIENT_MISMATCH: Native BNB transaction recipient (${tx.to ?? "null"}) does not match expected (${expected.expectedRecipient}).`
+        );
+      }
+      if (tx.value !== expected.expectedAmountAtomic) {
+        throw new Error(
+          `NATIVE_AMOUNT_MISMATCH: Native BNB transaction value (${tx.value.toString()}) does not match expected (${expected.expectedAmountAtomic.toString()}).`
         );
       }
       return { verifiedReceipt };
@@ -356,12 +423,21 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
           const logTo = getAddress(decoded.args.to);
           const logValue = decoded.args.value;
 
+          // Check sender: Transfer event 'from' MUST match authorized sender!
+          if (logFrom.toLowerCase() !== expected.expectedSender.toLowerCase()) {
+            throw new Error(
+              `TRANSFER_SENDER_MISMATCH: Transfer event sender (${logFrom}) does not match expected sender (${expected.expectedSender}).`
+            );
+          }
+
+          // Check recipient: Transfer event 'to' MUST match expected recipient!
           if (logTo.toLowerCase() !== expected.expectedRecipient.toLowerCase()) {
             throw new Error(
               `RECIPIENT_MISMATCH: Transfer event recipient (${logTo}) does not match expected (${expected.expectedRecipient}).`
             );
           }
 
+          // Check amount: Transfer event 'value' MUST match expected atomic amount!
           if (logValue !== expected.expectedAmountAtomic) {
             throw new Error(
               `TRANSFER_AMOUNT_MISMATCH: Transfer event value (${logValue.toString()}) does not match expected (${expected.expectedAmountAtomic.toString()}).`
@@ -389,7 +465,7 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
 
     if (!matchingEvent) {
       throw new Error(
-        `TRANSFER_EVENT_NOT_FOUND: Valid ERC-20 Transfer event matching recipient and amount not found in receipt logs.`
+        `TRANSFER_EVENT_NOT_FOUND: Valid ERC-20 Transfer event matching sender, recipient, and amount not found in receipt logs.`
       );
     }
 
@@ -563,7 +639,7 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
       return {
         success: false,
         specialistTag: this.tag,
-        capabilityId: "settlement_escrow",
+        capabilityId: this.capabilityId,
         metadata: {
           classification: "SIMULATED",
           source: "NairaTag Recipient Validator",
@@ -584,13 +660,14 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
       resolvedRecipient = await this.resolveRecipient(
         rawRecipient,
         client,
-        bloomPayload.testSeam?.customResolverAddress
+        bloomPayload.testSeam?.customResolverAddress,
+        bloomPayload.testSeam?.customRegistryAddress
       );
     } catch (err: any) {
       return {
         success: false,
         specialistTag: this.tag,
-        capabilityId: "settlement_escrow",
+        capabilityId: this.capabilityId,
         metadata: {
           classification: "SIMULATED",
           source: "NairaTag Resolver Engine",
@@ -613,6 +690,26 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
     // 7. PATH A: ISOLATED TEST SEAM EXECUTION (For Unit & Integration Testing)
     if (bloomPayload.testSeam?.receipt) {
       try {
+        let txObj = bloomPayload.testSeam.transaction;
+        if (!txObj && token.isNative && bloomPayload.testSeam.client) {
+          try {
+            const rawTx = await bloomPayload.testSeam.client.getTransaction({
+              hash: bloomPayload.testSeam.receipt.transactionHash,
+            });
+            if (rawTx) {
+              txObj = {
+                from: getAddress(rawTx.from),
+                to: rawTx.to ? getAddress(rawTx.to) : null,
+                value: rawTx.value,
+                chainId: rawTx.chainId,
+                hash: rawTx.hash,
+              };
+            }
+          } catch {
+            // client couldn't fetch tx
+          }
+        }
+
         const { verifiedReceipt, transferEvent } = this.verifySettlementReceipt(
           bloomPayload.testSeam.receipt,
           {
@@ -621,13 +718,14 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
             expectedAmountAtomic: amountAtomic,
             expectedAmountFormatted: amountFormatted,
             token,
+            transaction: txObj,
           }
         );
 
         return {
           success: true,
           specialistTag: this.tag,
-          capabilityId: "settlement_escrow",
+          capabilityId: this.capabilityId,
           metadata: {
             classification: "LIVE",
             source: "BSC Testnet (Chain ID 97)",
@@ -647,7 +745,7 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
             targetChainId: 97,
             network: "bsc-testnet",
             verifiedOnChain: true,
-            protocolRail: "NairaTagBountyEscrow (BSC Testnet)",
+            protocolRail: "NairaTag Direct Payment (BSC Testnet)",
             transferEvent,
           },
         };
@@ -655,12 +753,14 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
         const receiptObj = bloomPayload.testSeam?.receipt;
         const onChainReceipt: OnChainSettlementReceipt | undefined = receiptObj
           ? {
+              chainId: 97,
               transactionHash: receiptObj.transactionHash || ("0x" as `0x${string}`),
               blockNumber: Number(receiptObj.blockNumber || 0),
               status: receiptObj.status === "reverted" ? "reverted" : "reverted",
               from: sender,
               to: resolvedRecipient,
-              tokenContract: token.address,
+              amount: amountFormatted,
+              tokenAddress: token.address,
               tokenSymbol: token.symbol,
               verifiedOnExplorerUrl: `https://testnet.bscscan.com/tx/${receiptObj.transactionHash}`,
             }
@@ -669,7 +769,7 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
         return {
           success: false,
           specialistTag: this.tag,
-          capabilityId: "settlement_escrow",
+          capabilityId: this.capabilityId,
           metadata: {
             classification: "LIVE",
             source: "BSC Testnet (Chain ID 97)",
@@ -694,7 +794,7 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
             targetChainId: 97,
             network: "bsc-testnet",
             verifiedOnChain: false,
-            protocolRail: "NairaTagBountyEscrow (BSC Testnet)",
+            protocolRail: "NairaTag Direct Payment (BSC Testnet)",
           },
         };
       }
@@ -702,13 +802,37 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
 
     // 8. PATH B: LIVE ON-CHAIN BROADCAST (When transport === "live" and not dryRun)
     if (opts?.transport === "live" && !bloomPayload.dryRun) {
+      // 8a. Check Binance Agent Studio runtime wallet first
+      let runtimeWalletAddress: `0x${string}` | undefined;
+      try {
+        const { getWallet } = await import("@bnbagent/studio-runtime/wallet");
+        const w = getWallet();
+        if (w && w.address) {
+          runtimeWalletAddress = getAddress(w.address);
+        }
+      } catch {
+        // studio.toml has no anchored wallet or unmaterialized keystore
+      }
+
+      // 8b. Check Environment Signing Key
       const privateKey = (process.env.BNB_TESTNET_PRIVATE_KEY || process.env.TESTNET_SIGNER_KEY) as `0x${string}` | undefined;
 
-      if (!privateKey) {
+      let broadcasterAccount: ReturnType<typeof privateKeyToAccount> | undefined;
+      if (privateKey) {
+        try {
+          broadcasterAccount = privateKeyToAccount(privateKey);
+        } catch {
+          // invalid key format
+        }
+      }
+
+      const broadcastingAddress = runtimeWalletAddress ?? broadcasterAccount?.address;
+
+      if (!broadcastingAddress || !broadcasterAccount) {
         return {
           success: false,
           specialistTag: this.tag,
-          capabilityId: "settlement_escrow",
+          capabilityId: this.capabilityId,
           metadata: {
             classification: "SIMULATED",
             source: "BSC Testnet Wallet Engine",
@@ -717,9 +841,9 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
           },
           paymentCompleted: false,
           error: {
-            code: "NO_FUNDED_WALLET_AVAILABLE",
+            code: "NO_AUTHORIZED_WALLET_AVAILABLE",
             message:
-              "BSC Testnet live broadcast requires an unlocked keystore or BNB_TESTNET_PRIVATE_KEY. Refusing to synthesize fake transaction hashes.",
+              `BSC Testnet live broadcast requires an authorized keystore or BNB_TESTNET_PRIVATE_KEY for ${sender}. Refusing to synthesize fake transaction hashes.`,
             retryable: false,
           },
           data: {
@@ -733,15 +857,48 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
             targetChainId: 97,
             network: "bsc-testnet",
             verifiedOnChain: false,
-            protocolRail: "NairaTagBountyEscrow (BSC Testnet)",
+            protocolRail: "NairaTag Direct Payment (BSC Testnet)",
+          },
+        };
+      }
+
+      // 8c. WALLET AUTHORIZATION BINDING: Broadcaster must match authorized sender!
+      if (broadcastingAddress.toLowerCase() !== sender.toLowerCase()) {
+        return {
+          success: false,
+          specialistTag: this.tag,
+          capabilityId: this.capabilityId,
+          metadata: {
+            classification: "SIMULATED",
+            source: "NairaTag Wallet Authorization Gate",
+            retrievedAt: new Date().toISOString(),
+            latencyMs: Date.now() - startTime,
+          },
+          paymentCompleted: false,
+          error: {
+            code: "WALLET_AUTHORIZATION_MISMATCH",
+            message: `Broadcasting wallet (${broadcastingAddress}) does not match authorized sender (${sender}). Direct settlement requires the approved sender wallet to broadcast funds; silent private key substitution is prohibited.`,
+            retryable: false,
+          },
+          data: {
+            settlementStatus: "failed",
+            paymentCompleted: false,
+            amount: amountFormatted,
+            currency: token.symbol,
+            sender,
+            recipient: rawRecipient,
+            resolvedRecipientAddress: resolvedRecipient,
+            targetChainId: 97,
+            network: "bsc-testnet",
+            verifiedOnChain: false,
+            protocolRail: "NairaTag Direct Payment (BSC Testnet)",
           },
         };
       }
 
       try {
-        const account = privateKeyToAccount(privateKey);
         const walletClient = createWalletClient({
-          account,
+          account: broadcasterAccount,
           chain: bscTestnet,
           transport: http(this.defaultTestnetRpc),
         });
@@ -767,18 +924,33 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
           timeout: 45_000,
         });
 
+        // For native BNB, fetch the transaction by hash to verify sender and value
+        let txObj: { from: `0x${string}`; to?: `0x${string}` | null; value: bigint; chainId?: number } | undefined;
+        if (token.isNative) {
+          const rawTx = await client.getTransaction({ hash: txHash });
+          if (rawTx) {
+            txObj = {
+              from: getAddress(rawTx.from),
+              to: rawTx.to ? getAddress(rawTx.to) : null,
+              value: rawTx.value,
+              chainId: rawTx.chainId,
+            };
+          }
+        }
+
         const { verifiedReceipt, transferEvent } = this.verifySettlementReceipt(receipt, {
-          expectedSender: getAddress(account.address),
+          expectedSender: getAddress(broadcasterAccount.address),
           expectedRecipient: resolvedRecipient,
           expectedAmountAtomic: amountAtomic,
           expectedAmountFormatted: amountFormatted,
           token,
+          transaction: txObj,
         });
 
         return {
           success: true,
           specialistTag: this.tag,
-          capabilityId: "settlement_escrow",
+          capabilityId: this.capabilityId,
           metadata: {
             classification: "LIVE",
             source: "BSC Testnet Broadcast (Chain ID 97)",
@@ -792,13 +964,13 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
             paymentCompleted: true,
             amount: amountFormatted,
             currency: token.symbol,
-            sender: getAddress(account.address),
+            sender: getAddress(broadcasterAccount.address),
             recipient: rawRecipient,
             resolvedRecipientAddress: resolvedRecipient,
             targetChainId: 97,
             network: "bsc-testnet",
             verifiedOnChain: true,
-            protocolRail: "NairaTagBountyEscrow (BSC Testnet Live)",
+            protocolRail: "NairaTag Direct Payment (BSC Testnet Live)",
             transferEvent,
           },
         };
@@ -806,7 +978,7 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
         return {
           success: false,
           specialistTag: this.tag,
-          capabilityId: "settlement_escrow",
+          capabilityId: this.capabilityId,
           metadata: {
             classification: "LIVE",
             source: "BSC Testnet Broadcast",
@@ -830,7 +1002,7 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
             targetChainId: 97,
             network: "bsc-testnet",
             verifiedOnChain: false,
-            protocolRail: "NairaTagBountyEscrow (BSC Testnet)",
+            protocolRail: "NairaTag Direct Payment (BSC Testnet)",
           },
         };
       }
@@ -840,7 +1012,7 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
     return {
       success: false, // Honest failure of payment: simulation does not move money
       specialistTag: this.tag,
-      capabilityId: "settlement_escrow",
+      capabilityId: this.capabilityId,
       metadata: {
         classification: "SIMULATED",
         source: "NairaTag Testnet Settlement Simulator",
@@ -867,7 +1039,7 @@ export class BloomAdapter implements SpecialistAdapter<BloomSettlementData> {
         verifiedOnChain: false,
         simulationReason:
           "Transaction verified in pre-flight simulation mode. No on-chain funds were moved. No fake transaction hashes were generated.",
-        protocolRail: "NairaTagBountyEscrow (Simulation Mode)",
+        protocolRail: "NairaTag Direct Payment (Simulation Mode)",
       },
     };
   }
