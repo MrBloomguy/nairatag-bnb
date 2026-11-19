@@ -9,14 +9,26 @@ This repository is dedicated exclusively to **BNB Smart Chain (BSC)** developmen
 
 ---
 
-## 1. Verified Deployments on BSC Testnet (`Chain ID: 97`)
+## 1. Verified Deployments on BNB Smart Chain
 
-All core contracts are compiled, tested, deployed, and **publicly verified (with green checkmark)** on BNB Smart Chain Testnet:
+### BSC Mainnet (`Chain ID: 56`) — Production
+
+All core contracts are compiled, deployed, and **publicly verified with source code on BscScan Mainnet**:
+
+| Contract | Mainnet Address | Source Verification | Compiler | Optimization | Deployment Tx | Explorer |
+|---|---|---|---|---|---|---|
+| **NairaTagRegistry** | `0x6d3950a390c7f60287d545cc5785c594e07439f9` | ✅ **Verified** | `v0.8.24` (commit `e11b9ed9`) | 200 runs (Cancun) | [`0xe1452042...`](https://bscscan.com/tx/0xe145204249843b48990a4939b19bdc4181b0d584992470ed675a16c6388bad4e) | [BscScan](https://bscscan.com/address/0x6d3950a390c7f60287d545cc5785c594e07439f9#code) |
+| **NairaTagResolver** | `0xa3760573de321da2955573c69a4f497d57c769a2` | ✅ **Verified** | `v0.8.24` (commit `e11b9ed9`) | 200 runs (Cancun) | [`0xf4479b18...`](https://bscscan.com/tx/0xf4479b18f8d7acac2bc9c12f59cfa6501b76a95ce6b9f803dc942b6e9dc43c60) | [BscScan](https://bscscan.com/address/0xa3760573de321da2955573c69a4f497d57c769a2#code) |
+| **NairaTagAgentIDActivation** | `0x0fcdf115e1cff7b85835cd8ccdc0a66c8c9a95f7` | ✅ **Verified** | `v0.8.24` (commit `e11b9ed9`) | 200 runs (Cancun) | [`0x387ba8cd...`](https://bscscan.com/tx/0x387ba8cdf78fb39fe5cdddb497ea81efbc4fb5ce15f6e951f84dba2f0b2facab) | [BscScan](https://bscscan.com/address/0x0fcdf115e1cff7b85835cd8ccdc0a66c8c9a95f7#code) |
+
+---
+
+### BSC Testnet (`Chain ID: 97`) — Staging
 
 | Contract | Testnet Address | Source Verification | Compiler | Optimization | Block | Explorer |
 |---|---|---|---|---|---|---|
-| **NairaTagRegistry** | `0x73434d121f46e188b7f12ef048062e79e5119cc3` | ✅ **Verified** | `v0.8.38` (commit `1835d247`) | 200 runs | `143583829` | [BscScan Source](https://testnet.bscscan.com/address/0x73434d121f46e188b7f12ef048062e79e5119cc3#code) |
-| **NairaTagResolver** | `0x2ce440b6c63dc5e1128ab75ddac4d5da850de869` | ✅ **Verified** | `v0.8.38` (commit `1835d247`) | 200 runs | `143583841` | [BscScan Source](https://testnet.bscscan.com/address/0x2ce440b6c63dc5e1128ab75ddac4d5da850de869#code) |
+| **NairaTagRegistry** | `0x73434d121f46e188b7f12ef048062e79e5119cc3` | ✅ **Verified** | `v0.8.24` | 200 runs | `143583829` | [BscScan Source](https://testnet.bscscan.com/address/0x73434d121f46e188b7f12ef048062e79e5119cc3#code) |
+| **NairaTagResolver** | `0x2ce440b6c63dc5e1128ab75ddac4d5da850de869` | ✅ **Verified** | `v0.8.24` | 200 runs | `143583841` | [BscScan Source](https://testnet.bscscan.com/address/0x2ce440b6c63dc5e1128ab75ddac4d5da850de869#code) |
 
 ---
 

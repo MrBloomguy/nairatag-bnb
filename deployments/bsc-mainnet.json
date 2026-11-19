@@ -1,0 +1,57 @@
+{
+  "network": "bsc-mainnet",
+  "chainId": 56,
+  "deployer": "0xc519729BF6D15e5984702BBa2C553f1c74A73C95",
+  "timestamp": "2026-11-19T11:31:30.498Z",
+  "compiler": "v0.8.24+commit.e11b9ed9",
+  "evmVersion": "cancun",
+  "optimizationRuns": 200,
+  "contracts": {
+    "NairaTagRegistry": {
+      "address": "0x6d3950a390c7f60287d545cc5785c594e07439f9",
+      "transactionHash": "0xe145204249843b48990a4939b19bdc4181b0d584992470ed675a16c6388bad4e",
+      "blockNumber": 134495729,
+      "gasUsed": "1226119",
+      "compiler": "v0.8.24+commit.e11b9ed9",
+      "evmVersion": "cancun",
+      "optimizationRuns": 200,
+      "verified": true,
+      "guid": "qrm7y89ftmfaurgwn6jkmsj4uecc9xgwasnwyskxyqpv5utzcq"
+    },
+    "NairaTagResolver": {
+      "address": "0xa3760573de321da2955573c69a4f497d57c769a2",
+      "transactionHash": "0xf4479b18f8d7acac2bc9c12f59cfa6501b76a95ce6b9f803dc942b6e9dc43c60",
+      "blockNumber": 134495734,
+      "gasUsed": "1324257",
+      "compiler": "v0.8.24+commit.e11b9ed9",
+      "evmVersion": "cancun",
+      "optimizationRuns": 200,
+      "constructorArgs": {
+        "registry": "0x6d3950a390c7f60287d545cc5785c594e07439f9"
+      },
+      "verified": true,
+      "guid": "mrgfyby1daerub6ytkvpyyzfpjcjbfnkge1875czdnaaywtrif"
+    },
+    "NairaTagAgentIDActivation": {
+      "address": "0x0fcdf115e1cff7b85835cd8ccdc0a66c8c9a95f7",
+      "transactionHash": "0x387ba8cdf78fb39fe5cdddb497ea81efbc4fb5ce15f6e951f84dba2f0b2facab",
+      "blockNumber": 134495741,
+      "gasUsed": "830775",
+      "compiler": "v0.8.24+commit.e11b9ed9",
+      "evmVersion": "cancun",
+      "optimizationRuns": 200,
+      "constructorArgs": {
+        "registry": "0x6d3950a390c7f60287d545cc5785c594e07439f9",
+        "agentIdContract": "0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F"
+      },
+      "verified": true,
+      "guid": "jz2eqx7jctvxvv7iacckvvkmcw4dyzk31kehvw2rpfgt2bjtqn"
+    }
+  },
+  "explorers": {
+    "registryUrl": "https://bscscan.com/address/0x6d3950a390c7f60287d545cc5785c594e07439f9#code",
+    "resolverUrl": "https://bscscan.com/address/0xa3760573de321da2955573c69a4f497d57c769a2#code",
+    "activationUrl": "https://bscscan.com/address/0x0fcdf115e1cff7b85835cd8ccdc0a66c8c9a95f7#code"
+  },
+  "lastRun": "2026-11-19T11:31:30.501Z"
+}
