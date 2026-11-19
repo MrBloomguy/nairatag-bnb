@@ -1,0 +1,29 @@
+{
+  "network": "bsc-testnet",
+  "chainId": 97,
+  "deployer": "0x961d16fD035d0367DC4A08b6c0d41061901A14AA",
+  "timestamp": "2026-11-19T05:34:50.130Z",
+  "contracts": {
+    "NairaTagRegistry": {
+      "address": "0x73434d121f46e188b7f12ef048062e79e5119cc3",
+      "transactionHash": "0x1cfbae1538211e12be5414a222e811c39c0ec938600488e625695241886116db",
+      "blockNumber": 143583829,
+      "gasUsed": "1226763"
+    },
+    "NairaTagResolver": {
+      "address": "0x2ce440b6c63dc5e1128ab75ddac4d5da850de869",
+      "transactionHash": "0x03994d3e6db79b4a47c6f9ee556552ed4648c3bbb1bf4f48ed569f49a07be322",
+      "blockNumber": 143583841,
+      "gasUsed": "1328597",
+      "constructorArgs": {
+        "registry": "0x73434d121f46e188b7f12ef048062e79e5119cc3"
+      }
+    }
+  },
+  "explorers": {
+    "registryUrl": "https://testnet.bscscan.com/address/0x73434d121f46e188b7f12ef048062e79e5119cc3",
+    "resolverUrl": "https://testnet.bscscan.com/address/0x2ce440b6c63dc5e1128ab75ddac4d5da850de869",
+    "registryTxUrl": "https://testnet.bscscan.com/tx/0x1cfbae1538211e12be5414a222e811c39c0ec938600488e625695241886116db",
+    "resolverTxUrl": "https://testnet.bscscan.com/tx/0x03994d3e6db79b4a47c6f9ee556552ed4648c3bbb1bf4f48ed569f49a07be322"
+  }
+}
