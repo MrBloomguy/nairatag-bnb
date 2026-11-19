@@ -38,6 +38,10 @@ import {
   OrchestrationPlanSchema,
 } from "./services/orchestratorCore.js";
 import { globalTaskDelegator } from "./services/taskDelegator.js";
+import {
+  globalSkillRegistry,
+  globalSkillRouter,
+} from "./services/skills/index.js";
 
 /**
  * The project-wide default network (`[network].default`) — tool calls that
@@ -234,6 +238,80 @@ export const LLM_READ_TOOLS: ToolSet = {
           : undefined;
 
       return globalTaskDelegator.executeTask(plan, authRequest);
+    },
+  }),
+
+  // --- Binance Skills Hub & Agentic Wallet Capabilities (Phase 3) ---
+  discover_binance_skills: tool({
+    description: READ_TOOL_CATALOG.discover_binance_skills.description,
+    inputSchema: z.object(READ_TOOL_CATALOG.discover_binance_skills.inputSchema),
+    execute: async ({ category, access_level, query }) => {
+      if (query) {
+        return globalSkillRegistry.searchSkills(query).map((s) => ({
+          id: s.id,
+          name: s.name,
+          description: s.description,
+          category: s.category,
+          accessLevel: s.accessLevel,
+          requiresUserConsent: s.requiresUserConsent,
+        }));
+      }
+      return globalSkillRegistry
+        .listSkills({
+          category: category as any,
+          accessLevel: access_level as any,
+        })
+        .map((s) => ({
+          id: s.id,
+          name: s.name,
+          description: s.description,
+          category: s.category,
+          accessLevel: s.accessLevel,
+          requiresUserConsent: s.requiresUserConsent,
+        }));
+    },
+  }),
+
+  execute_binance_skill: tool({
+    description: READ_TOOL_CATALOG.execute_binance_skill.description,
+    inputSchema: z.object(READ_TOOL_CATALOG.execute_binance_skill.inputSchema),
+    execute: async ({
+      skill_id,
+      params_json,
+      approver_address,
+      signature,
+      nonce,
+      expires_at,
+    }) => {
+      let params;
+      try {
+        params = JSON.parse(params_json);
+      } catch (e: any) {
+        return {
+          success: false,
+          skillId: skill_id,
+          error: {
+            code: "INVALID_JSON",
+            message: `Failed to parse params_json: ${e.message}`,
+          },
+        };
+      }
+
+      const context = {
+        callerAddress: approver_address,
+        authorization:
+          approver_address && signature
+            ? {
+                isAuthorized: true,
+                approvedBy: approver_address,
+                signature,
+                nonce,
+                expiresAt: expires_at,
+              }
+            : undefined,
+      };
+
+      return globalSkillRouter.executeSkill(skill_id, params, context);
     },
   }),
   // job_count: ...        // network-wide stat — usually noise

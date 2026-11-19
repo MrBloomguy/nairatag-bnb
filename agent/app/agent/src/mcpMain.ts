@@ -102,6 +102,10 @@ import {
   OrchestrationPlanSchema,
 } from "./services/orchestratorCore.js";
 import { globalTaskDelegator } from "./services/taskDelegator.js";
+import {
+  globalSkillRegistry,
+  globalSkillRouter,
+} from "./services/skills/index.js";
 
 const APP_NAME = "agent";
 function safeLogText(value: unknown): string {
@@ -767,6 +771,74 @@ export function buildMcpServer(
           : undefined;
 
       return toolResult(await globalTaskDelegator.executeTask(plan, authRequest));
+    },
+  );
+  server.registerTool(
+    "discover_binance_skills",
+    roConfig("discover_binance_skills"),
+    async (a: ReadArgs<"discover_binance_skills">) => {
+      if (a.query) {
+        return toolResult(
+          globalSkillRegistry.searchSkills(a.query).map((s) => ({
+            id: s.id,
+            name: s.name,
+            description: s.description,
+            category: s.category,
+            accessLevel: s.accessLevel,
+            requiresUserConsent: s.requiresUserConsent,
+          }))
+        );
+      }
+      return toolResult(
+        globalSkillRegistry
+          .listSkills({
+            category: a.category as any,
+            accessLevel: a.access_level as any,
+          })
+          .map((s) => ({
+            id: s.id,
+            name: s.name,
+            description: s.description,
+            category: s.category,
+            accessLevel: s.accessLevel,
+            requiresUserConsent: s.requiresUserConsent,
+          }))
+      );
+    },
+  );
+  server.registerTool(
+    "execute_binance_skill",
+    roConfig("execute_binance_skill"),
+    async (a: ReadArgs<"execute_binance_skill">) => {
+      let params;
+      try {
+        params = JSON.parse(a.params_json);
+      } catch (e: any) {
+        return toolResult({
+          success: false,
+          skillId: a.skill_id,
+          error: {
+            code: "INVALID_JSON",
+            message: `Failed to parse params_json: ${e.message}`,
+          },
+        });
+      }
+
+      const context = {
+        callerAddress: a.approver_address,
+        authorization:
+          a.approver_address && a.signature
+            ? {
+                isAuthorized: true,
+                approvedBy: a.approver_address,
+                signature: a.signature,
+                nonce: a.nonce,
+                expiresAt: a.expires_at,
+              }
+            : undefined,
+      };
+
+      return toolResult(await globalSkillRouter.executeSkill(a.skill_id, params, context));
     },
   );
 

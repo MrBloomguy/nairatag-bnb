@@ -64,6 +64,16 @@ const ORCHESTRATE: AgentSkill = {
   outputModes: ["application/json"],
 };
 
+const BINANCE_SKILLS: AgentSkill = {
+  id: "binance_skills",
+  name: "Binance Skills Hub & Agentic Wallet Rail",
+  description:
+    "Modular Binance capabilities: public spot tickers (binance.market.ticker), orderbook depth (binance.market.depth), smart contract security audits (binance.token.security), wallet balances (binance.wallet.balance), and cryptographically gated transfers (binance.wallet.transfer).",
+  tags: ["binance", "market-data", "token-security", "agentic-wallet", "bsc"],
+  inputModes: ["application/json"],
+  outputModes: ["application/json"],
+};
+
 /** Card name from studio.toml `[project].name` (best-effort). */
 function agentName(): string {
   let name = "";
@@ -139,7 +149,9 @@ export function buildAgentCard(
     defaultInputModes: ["application/json"],
     defaultOutputModes: ["application/json"],
     skills:
-      opts.commerceSkills === false ? [ORCHESTRATE] : [NEGOTIATE, NOTIFY_FUNDED, ORCHESTRATE],
+      opts.commerceSkills === false
+        ? [ORCHESTRATE, BINANCE_SKILLS]
+        : [NEGOTIATE, NOTIFY_FUNDED, ORCHESTRATE, BINANCE_SKILLS],
     ...extra,
   };
 }

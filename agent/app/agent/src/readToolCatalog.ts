@@ -148,6 +148,33 @@ export const READ_TOOL_CATALOG = {
       user_affirmation: z.string().optional().describe("Optional text affirmation"),
     },
   },
+  discover_binance_skills: {
+    description:
+      "Discover available skills from Binance Skills Hub (market data, orderbook depth, token security audit) and Binance Agentic Wallet (balances, transfers). Filter by category, access level, or search keyword.",
+    inputSchema: {
+      category: z
+        .enum(["market", "security", "analytics", "wallet", "trade"])
+        .optional()
+        .describe("Filter by skill category"),
+      access_level: z
+        .enum(["read_only", "authenticated", "financial_execution"])
+        .optional()
+        .describe("Filter by access level ('read_only' vs 'financial_execution')"),
+      query: z.string().optional().describe("Keyword search across skill IDs, names, and descriptions"),
+    },
+  },
+  execute_binance_skill: {
+    description:
+      "Execute a skill from Binance Skills Hub or Binance Agentic Wallet. Read-only skills (e.g. 'binance.market.ticker', 'binance.token.security', 'binance.wallet.balance') execute immediately; financial skills (e.g. 'binance.wallet.transfer') strictly require user cryptographic consent (approver_address and signature).",
+    inputSchema: {
+      skill_id: z.string().describe("ID of skill to execute (e.g. 'binance.market.ticker', 'binance.token.security', 'binance.wallet.balance', 'binance.wallet.transfer')"),
+      params_json: z.string().describe("JSON stringified parameters required by the skill"),
+      approver_address: optionalAddress.describe("Authorizing wallet address (strictly required for financial execution skills)"),
+      signature: z.string().optional().describe("Cryptographic signature (EIP-712 or EIP-191) from approver (required for financial execution)"),
+      nonce: z.number().int().positive().optional().describe("Monotonic nonce for replay protection"),
+      expires_at: z.number().int().positive().optional().describe("Expiration timestamp in seconds"),
+    },
+  },
 } as const;
 
 export type ReadToolName = keyof typeof READ_TOOL_CATALOG;
