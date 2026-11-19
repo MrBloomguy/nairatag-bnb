@@ -33,6 +33,7 @@ import { z } from "zod";
 import { READ_TOOL_CATALOG } from "./readToolCatalog.js";
 import { verifyAgentId } from "./services/agentIdVerifier.js";
 import { globalSpecialistDirectory } from "./services/specialistDirectory.js";
+import { globalNairaTagOrchestrator } from "./services/orchestratorCore.js";
 
 /**
  * The project-wide default network (`[network].default`) — tool calls that
@@ -172,6 +173,18 @@ export const LLM_READ_TOOLS: ToolSet = {
           error: `No agent registered for tag ${tag_or_address}`,
         }
       );
+    },
+  }),
+
+  // --- NairaTag Central Orchestration & Planning (₦NAIRATAG) ---
+  plan_orchestration: tool({
+    description: READ_TOOL_CATALOG.plan_orchestration.description,
+    inputSchema: z.object(READ_TOOL_CATALOG.plan_orchestration.inputSchema),
+    execute: async ({ prompt, caller_tag, caller_address }) => {
+      return globalNairaTagOrchestrator.planTask(prompt, {
+        tag: caller_tag,
+        address: caller_address,
+      });
     },
   }),
   // job_count: ...        // network-wide stat — usually noise

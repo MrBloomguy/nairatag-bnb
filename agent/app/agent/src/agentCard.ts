@@ -54,6 +54,16 @@ const NOTIFY_FUNDED: AgentSkill = {
   outputModes: ["application/json"],
 };
 
+const ORCHESTRATE: AgentSkill = {
+  id: "orchestrate",
+  name: "NairaTag Task Orchestrator & Specialist Discovery",
+  description:
+    "Discovers specialist agents across the NairaTag Network (₦BLOOM, ₦DEFILLAMA, ₦METEO, ₦COINGECKO, and registered third-party specialists), formulates workflow plans, verifies caller trust tier via Binance Agent ID, and enforces strict authorization boundaries ('Identity is not Authority').",
+  tags: ["orchestrator", "discovery", "nairatag", "agent-id", "workflow"],
+  inputModes: ["application/json", "text/plain"],
+  outputModes: ["application/json"],
+};
+
 /** Card name from studio.toml `[project].name` (best-effort). */
 function agentName(): string {
   let name = "";
@@ -129,7 +139,7 @@ export function buildAgentCard(
     defaultInputModes: ["application/json"],
     defaultOutputModes: ["application/json"],
     skills:
-      opts.commerceSkills === false ? [] : [NEGOTIATE, NOTIFY_FUNDED],
+      opts.commerceSkills === false ? [ORCHESTRATE] : [NEGOTIATE, NOTIFY_FUNDED, ORCHESTRATE],
     ...extra,
   };
 }

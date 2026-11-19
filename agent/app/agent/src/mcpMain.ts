@@ -97,6 +97,7 @@ import * as signing from "./signing.js";
 import { READ_TOOL_CATALOG, type ReadToolName } from "./readToolCatalog.js";
 import { verifyAgentId } from "./services/agentIdVerifier.js";
 import { globalSpecialistDirectory } from "./services/specialistDirectory.js";
+import { globalNairaTagOrchestrator } from "./services/orchestratorCore.js";
 
 const APP_NAME = "agent";
 function safeLogText(value: unknown): string {
@@ -714,6 +715,18 @@ export function buildMcpServer(
         (await globalSpecialistDirectory.getAgentByTag(a.tag_or_address)) ?? {
           error: `No agent registered for tag ${a.tag_or_address}`,
         },
+      );
+    },
+  );
+  server.registerTool(
+    "plan_orchestration",
+    roConfig("plan_orchestration"),
+    async (a: ReadArgs<"plan_orchestration">) => {
+      return toolResult(
+        await globalNairaTagOrchestrator.planTask(a.prompt, {
+          tag: a.caller_tag,
+          address: a.caller_address,
+        }),
       );
     },
   );

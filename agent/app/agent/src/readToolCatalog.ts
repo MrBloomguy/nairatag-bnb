@@ -125,6 +125,15 @@ export const READ_TOOL_CATALOG = {
       tag_or_address: z.string().describe("NairaTag (e.g. '₦BLOOM') or EVM address"),
     },
   },
+  plan_orchestration: {
+    description:
+      "Formulate a structured orchestration plan for a user request: parses natural language intent, verifies caller identity tier, discovers matching specialist agents (₦BLOOM, ₦DEFILLAMA, ₦METEO, ₦COINGECKO, or registered third-parties), and sets explicit user authorization gates before any financial action.",
+    inputSchema: {
+      prompt: z.string().describe("Natural language task description (e.g. 'Send 5 USDC to ₦ALICE', 'What is PancakeSwap TVL on BNB?')"),
+      caller_tag: z.string().optional().describe("Optional NairaTag of the caller (e.g. '₦USER')"),
+      caller_address: optionalAddress.describe("Optional EVM address of the caller"),
+    },
+  },
 } as const;
 
 export type ReadToolName = keyof typeof READ_TOOL_CATALOG;
