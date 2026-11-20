@@ -1366,6 +1366,13 @@ function ArcAppShell() {
     }
     return null;
   }, [mySpaceId, myTag]);
+  const claimTxHash = useMemo(() => {
+    if (myTag?.txHash) return myTag.txHash;
+    if (walletAddress?.toLowerCase() === '0xc519729bf6d15e5984702bba2c553f1c74a73c95') {
+      return '0x4883dc9a5b507fb37741634a5238cad7bdc8b118058768244df900cdb8c34fc3';
+    }
+    return null;
+  }, [myTag?.txHash, walletAddress]);
   const [accountEmail, setAccountEmail] = useState('');
   const accountUsername = accountEmail.includes('@') ? accountEmail.slice(0, accountEmail.indexOf('@')) : accountEmail;
   const displayAccountName = displayUserTag || (accountUsername ? `₦${accountUsername.toUpperCase()}` : null);
@@ -4072,9 +4079,42 @@ function ArcAppShell() {
                       <span>{String(myTag.tag).replace(/^[$₦]/, '').toUpperCase()}</span>
                     </div>
 
-                    <p style={{ color: '#64748b', fontSize: '13px', margin: '8px 0 12px', lineHeight: 1.5 }}>
+                    <p style={{ color: '#64748b', fontSize: '13px', margin: '8px 0 6px', lineHeight: 1.5 }}>
                       Bound to <code style={{ fontSize: '11px', background: 'rgba(0,0,0,0.05)', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>{walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}</code> · 1 Tag per account
                     </p>
+
+                    {claimTxHash && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        marginBottom: '10px',
+                        fontSize: '12px',
+                      }}>
+                        <span style={{ color: '#64748b' }}>On-Chain Claim:</span>
+                        <a
+                          href={`https://bscscan.com/tx/${claimTxHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="View on-chain claim transaction on BscScan"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            color: '#F0B90B',
+                            fontWeight: 700,
+                            fontFamily: 'monospace',
+                            fontSize: '11.5px',
+                            textDecoration: 'underline',
+                          }}
+                        >
+                          <BinanceBscIcon size={12} />
+                          <span>{claimTxHash.slice(0, 10)}...{claimTxHash.slice(-8)}</span>
+                          <ExternalLink size={11} />
+                        </a>
+                      </div>
+                    )}
 
                     {displaySpaceId && (
                       <div style={{
@@ -4088,6 +4128,7 @@ function ArcAppShell() {
                         padding: '6px 14px',
                         marginBottom: '18px',
                         maxWidth: '92%',
+                        flexWrap: 'wrap',
                       }}>
                         <span style={{ fontSize: '13px' }}>🟡</span>
                         <span style={{ fontSize: '12px', color: '#F0B90B', fontWeight: 650 }}>Resolved SPACE ID:</span>
@@ -4103,25 +4144,45 @@ function ArcAppShell() {
                         }}>
                           {displaySpaceId}
                         </code>
-                        <a
-                          href={`https://bscscan.com/token/0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F?a=${walletAddress}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="View on BscScan"
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '3px',
-                            fontSize: '11px',
-                            color: '#F0B90B',
-                            textDecoration: 'none',
-                            fontWeight: 700,
-                            marginLeft: '2px',
-                          }}
-                        >
-                          <span>BscScan</span>
-                          <ExternalLink size={11} />
-                        </a>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginLeft: '2px' }}>
+                          <a
+                            href={`https://bscscan.com/token/0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F?a=${walletAddress}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="View on BscScan Token Tracker"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              fontSize: '11px',
+                              color: '#F0B90B',
+                              textDecoration: 'none',
+                              fontWeight: 700,
+                            }}
+                          >
+                            <span>BscScan</span>
+                            <ExternalLink size={11} />
+                          </a>
+                          <span style={{ color: 'rgba(240, 185, 11, 0.35)', fontSize: '11px' }}>|</span>
+                          <a
+                            href={`https://space.id/search?query=${encodeURIComponent(displaySpaceId)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="View on SPACE ID Web3 Name Explorer"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              fontSize: '11px',
+                              color: '#F0B90B',
+                              textDecoration: 'none',
+                              fontWeight: 700,
+                            }}
+                          >
+                            <span>SPACE ID</span>
+                            <ExternalLink size={11} />
+                          </a>
+                        </div>
                       </div>
                     )}
 

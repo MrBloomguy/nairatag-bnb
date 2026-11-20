@@ -186,6 +186,7 @@ export async function getArcTagForWallet(walletAddress) {
         cleanTag: clean,
         network: dbData.claim.network || 'BNB Smart Chain',
         claimedAt: dbData.claim.timestamp || Date.now(),
+        txHash: dbData.claim.txHash || dbData.claim.tx_hash || null,
       };
     }
   } catch (dbErr) {

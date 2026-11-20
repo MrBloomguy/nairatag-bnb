@@ -204,7 +204,7 @@ export default async function handler(req, res) {
 
         // Check arc_claims
         const claims = await supabaseFetch(
-          `arc_claims?select=tag,wallet_address,network,claimed_at&wallet_address=ilike.${normWallet}&limit=1`
+          `arc_claims?select=tag,wallet_address,network,claimed_at,tx_hash&wallet_address=ilike.${normWallet}&limit=1`
         ).catch(() => []);
 
         if (claims?.[0]) {
@@ -218,6 +218,7 @@ export default async function handler(req, res) {
               address: getAddress(c.wallet_address),
               network: c.network || 'BNB Smart Chain',
               timestamp: c.claimed_at ? new Date(c.claimed_at).getTime() : Date.now(),
+              txHash: c.tx_hash || null,
               reputation: 100,
             },
           });
