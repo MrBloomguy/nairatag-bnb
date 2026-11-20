@@ -539,7 +539,7 @@ function ArcAppShell() {
     } catch (error) {
       if (error.name !== 'AbortError') {
         setAgentDirectoryError(error.message);
-        console.warn('[Arc agent registry]', error.message);
+        console.warn('[BNB Chain agent registry]', error.message);
       }
     } finally {
       if (!signal?.aborted) setAgentDirectoryLoading(false);

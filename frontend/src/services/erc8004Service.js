@@ -137,7 +137,7 @@ export function buildNairaTagAgentMetadataUri(rawTag, agentId = null) {
   const metadata = {
     type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
     name: canonicalTag,
-    description: `NairaTag agent identity for ${canonicalTag} on Arc Testnet. Use this tag to discover the registered identity and pay its owner in USDC through NairaTag.`,
+    description: `NairaTag agent identity for ${canonicalTag} on BNB Chain. Use this tag to discover the registered identity and pay its owner in BNB through NairaTag.`,
     image: 'https://bnb.nairatag.ng/nairatag-logo.png',
     services: [{ name: 'NairaTag', endpoint: 'https://bnb.nairatag.ng/' }],
     x402Support: false,
