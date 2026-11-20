@@ -180,7 +180,7 @@ export default function PlatformAgentAdminPage() {
         : '';
       setNotice({
         type: 'success',
-        text: `â‚¦${created.tag} created as private draft.${mcpResult} Review its capabilities before publishing.`,
+        text: `₦${created.tag} created as private draft.${mcpResult} Review its capabilities before publishing.`,
       });
       await refreshAgents();
     } catch (error) {
@@ -194,7 +194,7 @@ export default function PlatformAgentAdminPage() {
     if (!walletAddress) return;
     if (
       action === 'retire' &&
-      !window.confirm(`Retire â‚¦${agent.tag}? Its identity will remain permanently reserved.`)
+      !window.confirm(`Retire ₦${agent.tag}? Its identity will remain permanently reserved.`)
     ) {
       return;
     }
@@ -206,8 +206,8 @@ export default function PlatformAgentAdminPage() {
         type: 'success',
         text:
           action === 'test_mcp'
-            ? `MCP server for â‚¦${agent.tag} is ${result.connectionStatus}. ${result.toolCount} tools verified.`
-            : `â‚¦${agent.tag} is now ${result.status}.`,
+            ? `MCP server for ₦${agent.tag} is ${result.connectionStatus}. ${result.toolCount} tools verified.`
+            : `₦${agent.tag} is now ${result.status}.`,
       });
       await refreshAgents();
     } catch (error) {
@@ -280,7 +280,7 @@ export default function PlatformAgentAdminPage() {
         <div className="admin-sidebar-header">
           <div className="admin-brand-cluster">
             <div className="admin-brand-symbol">
-              <span>â‚¦</span>
+              <span>₦</span>
             </div>
             <div className="admin-brand-copy">
               <strong>NairaTag Admin</strong>
@@ -649,7 +649,7 @@ export default function PlatformAgentAdminPage() {
                   <div className="admin-input-group">
                     <label>Canonical Agent Tag</label>
                     <div className="admin-tag-input-wrap">
-                      <span className="admin-tag-prefix">â‚¦</span>
+                      <span className="admin-tag-prefix">₦</span>
                       <input
                         required
                         minLength={2}
@@ -839,7 +839,7 @@ export default function PlatformAgentAdminPage() {
                 {/* Visual Identity Card Card */}
                 <div className="admin-identity-card-mockup" style={{ borderColor: previewColor }}>
                   <div className="admin-card-mockup-top">
-                    <span className="admin-mockup-naira">â‚¦</span>
+                    <span className="admin-mockup-naira">₦</span>
                     <span className="admin-mockup-net">Arc Network</span>
                   </div>
 
@@ -848,12 +848,12 @@ export default function PlatformAgentAdminPage() {
                       className="admin-mockup-avatar-circle"
                       style={{ background: previewColor }}
                     >
-                      <span>{form.tag ? form.tag.slice(0, 2).toUpperCase() : 'â‚¦T'}</span>
+                      <span>{form.tag ? form.tag.slice(0, 2).toUpperCase() : '₦T'}</span>
                     </div>
                   </div>
 
                   <div className="admin-mockup-bottom">
-                    <strong>â‚¦{form.tag || 'yourtag'}</strong>
+                    <strong>₦{form.tag || 'yourtag'}</strong>
                     <span>{form.displayName || 'Agent Display Name'}</span>
                   </div>
                 </div>
@@ -993,7 +993,7 @@ export default function PlatformAgentAdminPage() {
                                     <span className="admin-onchain-badge">ERC-8004</span>
                                   )}
                                 </div>
-                                <span className="admin-tag-badge">â‚¦{agent.tag}</span>
+                                <span className="admin-tag-badge">₦{agent.tag}</span>
                               </div>
                             </div>
                           </td>
@@ -1169,7 +1169,7 @@ export default function PlatformAgentAdminPage() {
           >
             <div className="admin-modal-topbar">
               <div className="admin-modal-heading">
-                <span className="admin-tag-badge">â‚¦{inspectingAgent.tag}</span>
+                <span className="admin-tag-badge">₦{inspectingAgent.tag}</span>
                 <h2>{inspectingAgent.name} Capabilities</h2>
               </div>
               <button

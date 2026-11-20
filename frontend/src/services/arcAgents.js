@@ -14,7 +14,7 @@ export function getOriginalAgentLogo(agentOrTag) {
     return `https://api.dicebear.com/7.x/identicon/svg?seed=agent-${Math.random().toString(36).slice(2, 8)}`;
   }
   if (typeof agentOrTag === 'string') {
-    const clean = agentOrTag.trim().replace(/^[â‚¦$@#]/, '').toLowerCase();
+    const clean = agentOrTag.trim().replace(/^[₦$@#]/, '').toLowerCase();
     if (KNOWN_AGENT_LOGOS[clean]) return KNOWN_AGENT_LOGOS[clean];
     if (clean.includes('defillama')) return KNOWN_AGENT_LOGOS.defillama;
     if (clean.includes('coingecko')) return KNOWN_AGENT_LOGOS.coingecko;
@@ -22,7 +22,7 @@ export function getOriginalAgentLogo(agentOrTag) {
     if ((agentOrTag.startsWith('http') || agentOrTag.startsWith('/')) && !agentOrTag.includes('bloom.png')) return agentOrTag;
     return `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(clean || 'agent')}`;
   }
-  const tag = String(agentOrTag.tag || agentOrTag.agentTag || '').trim().replace(/^[â‚¦$@#]/, '').toLowerCase();
+  const tag = String(agentOrTag.tag || agentOrTag.agentTag || '').trim().replace(/^[₦$@#]/, '').toLowerCase();
   if (KNOWN_AGENT_LOGOS[tag]) return KNOWN_AGENT_LOGOS[tag];
   if (agentOrTag.avatar && !agentOrTag.avatar.includes('dicebear') && !agentOrTag.avatar.includes('bloom.png')) return agentOrTag.avatar;
   if (agentOrTag.avatarUrl && !agentOrTag.avatarUrl.includes('dicebear') && !agentOrTag.avatarUrl.includes('bloom.png')) return agentOrTag.avatarUrl;
@@ -30,7 +30,7 @@ export function getOriginalAgentLogo(agentOrTag) {
 }
 
 export function mapArcAgentRecord(agent = {}) {
-  const tag = String(agent.tag || '').trim().replace(/^[â‚¦$@#]/, '').toLowerCase();
+  const tag = String(agent.tag || '').trim().replace(/^[₦$@#]/, '').toLowerCase();
   if (!/^[a-z0-9_-]{2,32}$/.test(tag)) return null;
   const stats = agent.stats && typeof agent.stats === 'object' ? agent.stats : {};
   const metrics = agent.metrics && typeof agent.metrics === 'object' ? agent.metrics : {};
@@ -40,7 +40,7 @@ export function mapArcAgentRecord(agent = {}) {
   return {
     id: agent.id == null ? null : String(agent.id),
     tag,
-    canonicalTag: `â‚¦${tag.toUpperCase()}`,
+    canonicalTag: `₦${tag.toUpperCase()}`,
     name: String(agent.displayName || agent.name || tag),
     owner: agent.owner || agent.ownerWallet || agent.owner_wallet || agent.ownerAddress || agent.owner_address || agent.walletAddress || agent.wallet_address || agent.identity?.owner || null,
     ownerWallet: agent.ownerWallet || agent.owner_wallet || agent.owner || agent.ownerAddress || agent.walletAddress || null,
@@ -118,9 +118,9 @@ const MARKETPLACE_AGENTS = [
   {
     id: 'agent_official_nairatag',
     tag: 'nairatag',
-    canonicalTag: 'â‚¦NAIRATAG',
-    name: 'â‚¦nairatag',
-    displayName: 'â‚¦nairatag (Official Protocol Agent)',
+    canonicalTag: '₦NAIRATAG',
+    name: '₦nairatag',
+    displayName: '₦nairatag (Official Protocol Agent)',
     category: 'Core Protocol',
     role: 'Official sovereign in-house AI agent of the NairaTag Network on BNB Chain Mainnet. Orchestrates tag resolution, escrow payouts, and autonomous agent-to-agent BNB transfers.',
     avatar: 'https://api.dicebear.com/7.x/identicon/svg?seed=nairatag',
@@ -291,7 +291,7 @@ export async function fetchArcAgentDirectory({ signal } = {}) {
   }
 
   for (const agent of merged) {
-    const cleanTag = String(agent.tag || '').replace(/^[â‚¦$@#]/, '').toLowerCase();
+    const cleanTag = String(agent.tag || '').replace(/^[₦$@#]/, '').toLowerCase();
     if (PROTOCOL_AGENT_POINTS[cleanTag] !== undefined) {
       agent.points = PROTOCOL_AGENT_POINTS[cleanTag];
       agent.earnings = 0;
@@ -338,17 +338,17 @@ export async function getAdminArcAgentRegistry({ walletAddress }) {
 }
 
 export async function transitionArcAgent({ walletAddress, tag, action }) {
-  return sendAdminPayload({ walletAddress, action, payload: { action, tag: String(tag || '').trim().replace(/^[â‚¦$@#]/, '').toLowerCase() } });
+  return sendAdminPayload({ walletAddress, action, payload: { action, tag: String(tag || '').trim().replace(/^[₦$@#]/, '').toLowerCase() } });
 }
 
 export async function enableArcMcpTool({ walletAddress, tag, toolKey }) {
   const action = 'enable_mcp_tool';
-  return sendAdminPayload({ walletAddress, action, payload: { action, tag: String(tag || '').trim().replace(/^[â‚¦$@#]/, '').toLowerCase(), toolKey } });
+  return sendAdminPayload({ walletAddress, action, payload: { action, tag: String(tag || '').trim().replace(/^[₦$@#]/, '').toLowerCase(), toolKey } });
 }
 
 export async function createArcPlatformAgent({ walletAddress, agent }) {
   const payload = {
-    tag: String(agent.tag || '').trim().replace(/^[â‚¦$@#]/, '').toLowerCase(),
+    tag: String(agent.tag || '').trim().replace(/^[₦$@#]/, '').toLowerCase(),
     displayName: String(agent.displayName || '').trim(),
     category: String(agent.category || '').trim(),
     description: String(agent.description || '').trim(),

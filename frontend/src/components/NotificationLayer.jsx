@@ -179,7 +179,7 @@ export default function NotificationLayer({ onNavigateTab, onOpenRewards, accoun
 
   // Referral milestones are sent to the inviter's active browser profile.
   useEffect(() => {
-    const tag = String(userTag || '').replace(/^[$â‚¦@#]/, '').trim().toLowerCase();
+    const tag = String(userTag || '').replace(/^[$₦@#]/, '').trim().toLowerCase();
     if (!tag) return undefined;
     const handleReferralCredit = (event) => {
       const detail = event.detail || {};

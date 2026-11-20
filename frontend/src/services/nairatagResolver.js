@@ -424,7 +424,7 @@ export async function checkTagAvailability(rawTag, walletAddress = null) {
     return {
       available: false,
       isTaken: true,
-      reason: `â‚¦${clean.toUpperCase()} is an official sovereign protocol agent on Arc.`,
+      reason: `₦${clean.toUpperCase()} is an official sovereign protocol agent on Arc.`,
     };
   }
 
@@ -495,7 +495,7 @@ export async function getTagForWallet(walletAddress) {
         return {
           hasTag: true,
           tag: data.claim.tag,
-          cleanTag: data.claim.cleanTag || data.claim.tag.replace(/^â‚¦/, ''),
+          cleanTag: data.claim.cleanTag || data.claim.tag.replace(/^₦/, ''),
           network: data.claim.network || 'Arc Mainnet',
           claimedAt: data.claim.timestamp || Date.now(),
           reputation: data.claim.reputation || 100,

@@ -78,7 +78,7 @@ export async function sendArcChatMessage({ walletAddress, conversationId, turnId
     console.error('[ArcChat] Service error:', err.message);
     return {
       ok: false,
-      reply: `âš ï¸ Chat service notice: ${err.message}. Please try again shortly.`,
+      reply: `\u26A0\uFE0F Chat service notice: ${err.message}. Please try again shortly.`,
       toolEvents: [],
     };
   }

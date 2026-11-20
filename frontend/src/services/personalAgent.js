@@ -18,7 +18,7 @@ async function signedRequest({ walletAddress, tag, action, payload = {} }) {
       const payloadHash = keccak256(stringToHex(JSON.stringify(payload)));
       const message = [
         'NairaTag Personal Agent', `Action: ${action}`, `Wallet: ${walletAddress.toLowerCase()}`,
-        `Tag: ${tag.replace(/^[â‚¦$@#]/, '').toLowerCase()}`, `Chain: ${CHAIN_ID}`,
+        `Tag: ${tag.replace(/^[₦$@#]/, '').toLowerCase()}`, `Chain: ${CHAIN_ID}`,
         `Timestamp: ${timestamp}`, `Payload hash: ${payloadHash}`,
       ].join('\n');
       try {
