@@ -4421,14 +4421,12 @@ function ArcAppShell() {
                       href={`https://bscscan.com/address/${agent.ownerWallet || agent.owner || '0x6d3950a390c7f60287d545cc5785c594e07439f9'}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="agent-bscscan-badge"
+                      className="agent-bscscan-icon-btn agent-card-bscscan-btn"
                       title={`View on-chain claim for ₦${agent.tag} on BscScan`}
                       aria-label={`View on-chain claim for ₦${agent.tag} on BscScan`}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <BinanceBscIcon size={12} />
-                      <span>On-Chain Claim</span>
-                      <ExternalLink size={10} style={{ opacity: 0.7 }} />
+                      <BinanceBscIcon size={14} />
                     </a>
                   </div>
                 ))}

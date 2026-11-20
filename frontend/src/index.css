@@ -9195,6 +9195,10 @@ body:has(.main-content-wrapper.chat-mode) #root {
   margin-right: 4px;
 }
 
+.agent-card-bscscan-btn {
+  margin: 6px auto 0 auto;
+}
+
 .agent-bscscan-icon-btn:hover {
   background: rgba(240, 185, 11, 0.22);
   border-color: rgba(240, 185, 11, 0.6);
