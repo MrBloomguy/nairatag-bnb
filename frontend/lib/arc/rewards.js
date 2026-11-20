@@ -66,7 +66,7 @@ async function ensureArcIdentity(tag, expectedWallet) {
 }
 async function rpc(name, args) {
   const { data, error } = await supabase.rpc(name, args);
-  if (error) throw new Error(error.message || 'Arc rewards database request failed.');
+  if (error) throw new Error(error.message || 'Binance rewards database request failed.');
   return data;
 }
 async function canonicalWallet(address) {
@@ -98,11 +98,11 @@ async function assertArcChain() {
 }
 async function verifyPayment(txHash, expectedIdentityWallet) {
   await assertArcChain();
-  if (!/^0x[a-f\d]{64}$/i.test(String(txHash || ''))) throw new Error('A valid Arc transaction hash is required.');
+  if (!/^0x[a-f\d]{64}$/i.test(String(txHash || ''))) throw new Error('A valid BNB Chain transaction hash is required.');
   const receipt = await publicClient.getTransactionReceipt({ hash: txHash });
   const tx = await publicClient.getTransaction({ hash: txHash });
   if (receipt.status !== 'success' || await canonicalWallet(tx.from) !== wallet(expectedIdentityWallet)) {
-    throw new Error('This is not a successful Arc payment sent by a wallet linked to this account.');
+    throw new Error('This is not a successful BNB Chain payment sent by a wallet linked to this account.');
   }
   const walletTopic = `0x${wallet(tx.from).slice(2).padStart(64, '0')}`;
   const paymentLog = receipt.logs.find((log) => wallet(log.address) === wallet(USDC)
@@ -110,7 +110,7 @@ async function verifyPayment(txHash, expectedIdentityWallet) {
     && log.topics?.[1]?.toLowerCase() === walletTopic
     && log.topics?.[2]?.toLowerCase() !== walletTopic
     && BigInt(log.data || '0x0') > 0n);
-  if (!paymentLog || !tx) throw new Error('No outgoing USDC transfer from this wallet was found in the Arc receipt.');
+  if (!paymentLog || !tx) throw new Error('No outgoing transfer from this wallet was found in the BNB Chain receipt.');
 }
 
 export default async function handler(req, res) {
@@ -132,7 +132,7 @@ export default async function handler(req, res) {
       ]);
       return respond(res, 200, { ok: true, state, identity });
     }
-    catch (error) { return respond(res, Number(error.status) || 503, { ok: false, error: error.status ? error.message : 'Arc rewards database is unavailable.' }); }
+    catch (error) { return respond(res, Number(error.status) || 503, { ok: false, error: error.status ? error.message : 'Binance rewards database is unavailable.' }); }
   }
   if (req.method !== 'POST') return respond(res, 405, { ok: false, error: 'Method not allowed.' });
 
@@ -199,7 +199,7 @@ export default async function handler(req, res) {
       const referredTag = await ensureArcIdentity(body.tag, address);
       const referrerTag = normalizeTag(body.referrerTag);
       const referrerWallet = await lookupReferrerWallet(referrerTag);
-      if (!referrerTag || !referrerWallet) throw new Error(`Referral tag ₦${(referrerTag || '').toUpperCase()} is not registered on Arc.`);
+      if (!referrerTag || !referrerWallet) throw new Error(`Referral tag ₦${(referrerTag || '').toUpperCase()} is not registered on BNB Chain.`);
       result = await rpc('arc_register_referral', {
         p_referred_wallet: identityWallet,
         p_referrer_wallet: await canonicalWallet(referrerWallet),
@@ -234,7 +234,7 @@ export default async function handler(req, res) {
       await verifyPayment(body.txHash, address);
       result = await rpc('arc_record_payment_rewards', { p_wallet: identityWallet, p_tx_hash: String(body.txHash).toLowerCase() });
     } else {
-      return respond(res, 400, { ok: false, error: 'Unsupported Arc rewards action.' });
+      return respond(res, 400, { ok: false, error: 'Unsupported Binance rewards action.' });
     }
     diagnosticStage = 'refresh_reward_state';
     const [state, identity] = await Promise.all([
@@ -242,7 +242,7 @@ export default async function handler(req, res) {
     ]);
     return respond(res, 200, { ok: true, result, state, identity });
   } catch (error) {
-    const message = error?.message || 'Arc reward action failed.';
+    const message = error?.message || 'Binance reward action failed.';
     let requestedAction = '';
     try {
       const parsedBody = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;

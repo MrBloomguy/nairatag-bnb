@@ -45,9 +45,9 @@ export const ARC_SUPPORTED_SWAP_TOKENS = [
 // App Kit Crosschain Target Chains
 export const APP_KIT_CROSSCHAINS = [
   {
-    chain: "Arc",
-    name: "Arc Mainnet",
-    chainId: 5042,
+    chain: "BNB Chain",
+    name: "BNB Smart Chain",
+    chainId: 56,
     badge: "Native Gas",
   },
   {
@@ -86,8 +86,8 @@ export async function estimateAppKitSwap({
   tokenIn,
   tokenOut,
   amountIn,
-  fromChain = "Arc",
-  toChain = "Arc",
+  fromChain = "BNB Chain",
+  toChain = "BNB Chain",
   slippageBps = 100, // 1%
 }) {
   if (!amountIn || parseFloat(amountIn) <= 0) {
@@ -161,12 +161,12 @@ export async function executeAppKitSwap({
   tokenIn,
   tokenOut,
   amountIn,
-  fromChain = "Arc",
-  toChain = "Arc",
+  fromChain = "BNB Chain",
+  toChain = "BNB Chain",
   recipientAddress,
   onStepUpdate = () => {},
 }) {
-  onStepUpdate({ step: "init", message: "Preparing Arc App Kit swap parameters..." });
+  onStepUpdate({ step: "init", message: "Preparing swap parameters..." });
 
   const isCrossChain = fromChain !== toChain;
 
@@ -192,7 +192,7 @@ export async function executeAppKitSwap({
     step: "signing",
     message: isCrossChain
       ? `Initiating CCTP Crosschain Swap from ${fromChain} to ${toChain}...`
-      : `Submitting swap transaction on Arc Mainnet (USDC sub-second finality)...`,
+      : `Submitting swap transaction on BNB Smart Chain...`,
   });
 
   const kit = await getSwapKit();
@@ -214,7 +214,7 @@ export async function executeAppKitSwap({
       };
 
       const result = await kit.swap(swapParams);
-      onStepUpdate({ step: "complete", message: "Swap confirmed on Arc Mainnet!" });
+      onStepUpdate({ step: "complete", message: "Swap confirmed on BNB Smart Chain!" });
       return {
         success: true,
         txHash: result.txHash || "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join(""),
@@ -222,7 +222,7 @@ export async function executeAppKitSwap({
         tokenIn,
         tokenOut,
         status: "COMPLETED",
-        blockExplorerUrl: `https://explorer.arc.io/tx/${result.txHash || ""}`,
+        blockExplorerUrl: `https://bscscan.com/tx/${result.txHash || ""}`,
       };
     } catch (kitError) {
       console.warn("Kit swap failed or rejected, checking reason:", kitError);
@@ -246,10 +246,10 @@ export function getUnifiedBalanceSummary(arcUsdcBalance = "0.00") {
     totalUnifiedUsdc: (arcBal + baseBal + arbBal).toFixed(2),
     chains: [
       {
-        name: "Arc Mainnet (Native Gas)",
-        symbol: "USDC",
+        name: "BNB Smart Chain (Native Gas)",
+        symbol: "BNB",
         amount: arcBal.toFixed(4),
-        domain: 5042,
+        domain: 56,
         active: true,
       },
       {

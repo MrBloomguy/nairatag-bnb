@@ -26,7 +26,7 @@ export default function PublicAgentPage({ tag }) {
   }, [cleanTag]);
 
   useEffect(() => {
-    document.title = `₦${cleanTag.toUpperCase()} · NairaTag on Arc`;
+    document.title = `₦${cleanTag.toUpperCase()} · NairaTag on BNB Chain`;
   }, [cleanTag]);
 
   const copyLink = async () => {
@@ -39,7 +39,7 @@ export default function PublicAgentPage({ tag }) {
 
   const shareProfile = async () => {
     if (navigator.share) {
-      try { await navigator.share({ title: `₦${cleanTag.toUpperCase()} on NairaTag`, text: `Pay or connect with ₦${cleanTag.toUpperCase()} on Arc.`, url: profileUrl }); }
+      try { await navigator.share({ title: `₦${cleanTag.toUpperCase()} on NairaTag`, text: `Pay or connect with ₦${cleanTag.toUpperCase()} on BNB Chain.`, url: profileUrl }); }
       catch (error) { if (error.name !== 'AbortError') copyLink(); }
     } else copyLink();
   };
@@ -57,7 +57,7 @@ export default function PublicAgentPage({ tag }) {
           <h1 id="public-agent-title">A name people can trust.</h1>
           <p className="public-agent-intro">This is the public profile for ₦{cleanTag.toUpperCase()}. Share it to make it easy for people to find and pay you.</p>
 
-          {status === 'loading' && <div className="public-agent-notice"><LoaderCircle className="public-agent-spin" size={19} /> Looking up this tag on Arc…</div>}
+          {status === 'loading' && <div className="public-agent-notice"><LoaderCircle className="public-agent-spin" size={19} /> Looking up this tag on BNB Chain…</div>}
           {status === 'error' && <div className="public-agent-notice public-agent-error">{!ARC_NAIRATAG_REGISTRY_ADDRESS || !ARC_NAIRATAG_RESOLVER_ADDRESS ? 'NairaTag profiles are not deployed on Arc Mainnet yet. The Mainnet registry and resolver must be deployed before these profiles can be verified here.' : 'We couldn’t reach the Arc registry. Check your connection and reload this page.'}</div>}
           {status === 'missing' && <div className="public-agent-notice public-agent-error">₦{cleanTag.toUpperCase()} hasn’t been claimed yet.</div>}
 
@@ -77,14 +77,14 @@ export default function PublicAgentPage({ tag }) {
           <span className="public-id-watermark" aria-hidden="true">N</span>
           <img className="public-id-avatar" src={`data:image/svg+xml,${encodeURIComponent(identity.avatarSvg)}`} alt={`Pixel avatar for ₦${cleanTag.toUpperCase()}`} />
           <div className="public-id-details">
-            <h2>₦{cleanTag.toUpperCase()} {profile && <span className="public-id-verified" title="Claim recorded on Arc"><Check size={15} /></span>}</h2>
+            <h2>₦{cleanTag.toUpperCase()} {profile && <span className="public-id-verified" title="Claim recorded on BNB Chain"><Check size={15} /></span>}</h2>
             <p>{profile ? 'Connected. Verified. Yours.' : 'Public NairaTag profile'}</p>
           </div>
           {profile && <a className="public-id-owner" href={`${explorerUrl}/address/${profile.owner}`} target="_blank" rel="noreferrer" title={profile.owner}>Wallet <span>{shorten(profile.owner)}</span><ExternalLink size={12} /></a>}
         </article>
       </section>
 
-      {profile && <footer className="public-agent-footer">NairaTag makes Arc payments simple. <a href="/#claim">Claim your own tag <ArrowUpRight size={13} /></a></footer>}
+      {profile && <footer className="public-agent-footer">NairaTag makes BNB Chain payments simple. <a href="/#claim">Claim your own tag <ArrowUpRight size={13} /></a></footer>}
     </main>
   );
 }

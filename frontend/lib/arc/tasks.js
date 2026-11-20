@@ -333,7 +333,7 @@ export default async function handler(req, res) {
           `Task: ${taskId}`,
           `Deliverable SHA-256: ${digest}`,
           'Submission saved; pending task-owner review.',
-          'Arc Mainnet - https://arc.nairatag.ng/#tasks',
+          'Arc Mainnet - https://bnb.nairatag.ng/#tasks',
         ].join('\n');
         try {
           const telegram = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {

@@ -11,8 +11,8 @@ import {
 } from 'lucide-react';
 import './NairaTagLanding.css';
 
-const APP_URL = 'https://arc.nairatag.ng/';
-const CLAIM_URL = 'https://arc.nairatag.ng/';
+const APP_URL = 'https://bnb.nairatag.ng/';
+const CLAIM_URL = 'https://bnb.nairatag.ng/#claim';
 
 const features = [
   {

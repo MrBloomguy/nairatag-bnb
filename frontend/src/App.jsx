@@ -337,20 +337,20 @@ function renderChatText(text) {
 export const FAQ_ITEMS = [
   {
     id: 1,
-    category: 'arc',
-    categoryLabel: 'Arc & USDC',
+    category: 'bnb',
+    categoryLabel: 'BNB Chain & BNB',
     question: 'What is a NairaTag (₦Tag)?',
     answer: [
-      'A human-readable Web3 handle (like ₦SEGUN or ₦CHOWDECK) mapping directly to your Arc wallet address for instant, zero-fee USDC transfers.'
+      'A human-readable Web3 handle (like ₦SEGUN or ₦CHOWDECK) mapping directly to your BNB wallet address for instant transfers.'
     ]
   },
   {
     id: 2,
-    category: 'arc',
-    categoryLabel: 'Arc & USDC',
-    question: 'Why build on Arc Osaka EVM?',
+    category: 'bnb',
+    categoryLabel: 'BNB Chain & BNB',
+    question: 'Why build on BNB Smart Chain?',
     answer: [
-      'Arc Osaka EVM delivers sub-second finality, 0.00 USDC gas fees on testnet, and native 24/7 non-custodial settlements with zero float loss.'
+      'BNB Smart Chain delivers fast 3-second block finality, ultra-low gas fees paid in BNB, and native non-custodial settlements with high liquidity.'
     ]
   },
   {
@@ -368,7 +368,7 @@ export const FAQ_ITEMS = [
     categoryLabel: 'AI Agents (ERC-8004)',
     question: 'What are ERC-8004 AI Agents?',
     answer: [
-      'Autonomous onchain agents with verified identities, trackable reputation scores, milestone proofs, and live earnings settled directly on Arc.'
+      'Autonomous onchain agents with verified identities, trackable reputation scores, milestone proofs, and live earnings settled directly on BNB Chain.'
     ]
   },
   {
@@ -872,7 +872,7 @@ function ArcAppShell() {
       setRecordingSeconds(0);
       setVoiceTranscribedText('');
 
-      const promptToRun = finalTranscript || (duration > 0 ? 'Voice directive on Arc Osaka' : '');
+      const promptToRun = finalTranscript || (duration > 0 ? 'Voice directive on BNB Chain' : '');
       if (promptToRun) {
         handleSendChatPrompt(promptToRun, { isVoiceReply: true, skipUserMsgAppend: true });
       }
@@ -1018,7 +1018,7 @@ function ArcAppShell() {
           ? `${textToSend || 'I attached a file.'}\n\nThe attached file is ${fileToSend.name} (${fileToSend.size}); its contents are not included in this chat request.`
           : textToSend;
         const selectedAgent = foundAgent || activeTaggedAgent;
-        const agentTag = selectedAgent?.tag || 'arc';
+        const agentTag = selectedAgent?.tag || 'binance';
         const cleanTag = String(agentTag).toLowerCase().replace(/^[₦$@#]/, '');
         const conversationId = getOrCreateArcChatConversationId(walletAddress, agentTag);
         setActiveChatConversationId(conversationId);
@@ -1034,7 +1034,7 @@ function ArcAppShell() {
             replyText = `**Top DeFi Protocols (TVL)**\n\n${top}`;
             toolEvents = [{ tool: 'defillama.tvl', status: 'success', summary: 'Fetched live multi-chain TVL rankings' }];
           } catch (e) {
-            replyText = `🦙 **DefiLlama**: Connected to Arc Testnet. Query: "${agentPrompt}". DeFi analytics available via tool \`defillama.tvl\`.`;
+            replyText = `🦙 **DefiLlama**: Connected to BNB Smart Chain. Query: "${agentPrompt}". DeFi analytics available via tool \`defillama.tvl\`.`;
           }
         } else if (cleanTag === 'meteo') {
           replyAgentTag = 'meteo';
@@ -1052,7 +1052,7 @@ function ArcAppShell() {
             replyText = `**Weather in ${data.city || "Lagos"}**: ${data.temperatureC}°C · ${data.windSpeedKmH} km/h wind · Risk: **${data.riskLevel}**`;
             toolEvents = [{ tool: 'meteo.delivery_impact', status: 'success', summary: `Calculated ${data.riskLevel} delivery risk for ${data.city}` }];
           } catch (e) {
-            replyText = `ðŸŒ¤ï¸ **Open-Meteo**: Connected to Arc Testnet. Real-time meteorological dispatch risk analysis active.`;
+            replyText = `ðŸŒ¤ï¸ **Open-Meteo**: Connected to BNB Smart Chain. Real-time meteorological dispatch risk analysis active.`;
           }
         } else if (cleanTag === 'coingecko') {
           replyAgentTag = 'coingecko';
@@ -1140,7 +1140,7 @@ function ArcAppShell() {
           replyAgentTag = 'ArcAgent';
           replyAgentName = 'NairaTag';
           const savedAvatar = myTag?.tag ? getAgentOnboarding(walletAddress, myTag.tag) : null;
-          replyAvatar = savedAvatar?.avatarData || savedAvatar?.avatar || 'https://api.dicebear.com/7.x/identicon/svg?seed=arc-agent';
+          replyAvatar = savedAvatar?.avatarData || savedAvatar?.avatar || 'https://api.dicebear.com/7.x/identicon/svg?seed=bnb-agent';
         }
       }
       widget = null;
@@ -1182,7 +1182,7 @@ function ArcAppShell() {
       return;
     }
     const agent = currentTaggedAgent;
-    const agentTag = agent?.tag || 'arc';
+    const agentTag = agent?.tag || 'binance';
     const conversationId = activeChatConversationId || getOrCreateArcChatConversationId(walletAddress, agentTag);
     setActiveChatConversationId(conversationId);
     setIsChatConversationOpen(true);
@@ -1234,7 +1234,7 @@ function ArcAppShell() {
           sender: isAgent ? 'agent' : 'user',
           agentTag: isAgent ? (agent?.tag || 'ArcAgent') : undefined,
           agentName: isAgent ? (agent?.name || 'NairaTag') : undefined,
-          avatar: isAgent ? (agent?.avatar || 'https://api.dicebear.com/7.x/identicon/svg?seed=arc-agent') : undefined,
+          avatar: isAgent ? (agent?.avatar || 'https://api.dicebear.com/7.x/identicon/svg?seed=bnb-agent') : undefined,
           text: message.content,
           time: new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           widget: null,
@@ -1758,7 +1758,7 @@ function ArcAppShell() {
   const [swapTokenIn, setSwapTokenIn] = useState('USDC');
   const [swapTokenOut, setSwapTokenOut] = useState('EURC');
   const [swapAmountIn, setSwapAmountIn] = useState('10.00');
-  const [swapTargetChain, setSwapTargetChain] = useState('Arc');
+  const [swapTargetChain, setSwapTargetChain] = useState('BNB Chain');
   const [swapEstimate, setSwapEstimate] = useState(null);
   const [swapEstimating, setSwapEstimating] = useState(false);
   const [swapExecuting, setSwapExecuting] = useState(false);
@@ -1795,8 +1795,8 @@ function ArcAppShell() {
       id: null,
       tag: sharedTag.toUpperCase(),
       name: `₦${sharedTag.toUpperCase()}`,
-      category: 'Arc agent',
-      role: 'Shared Arc agent profile',
+      category: 'BNB agent',
+      role: 'Shared BNB agent profile',
       avatar: `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(sharedTag)}`,
       profileType: 'shared-agent',
     });
@@ -2116,7 +2116,7 @@ function ArcAppShell() {
         if (embeddedWallet) break;
         await new Promise((resolve) => setTimeout(resolve, 200));
       }
-      if (!embeddedWallet) throw new Error('Your secure Arc wallet is still being created. Please try again shortly.');
+      if (!embeddedWallet) throw new Error('Your secure BNB wallet is still being created. Please try again shortly.');
       const provider = await embeddedWallet.getEthereumProvider();
       setActiveWalletProvider(provider);
       const address = embeddedWallet.address;
@@ -2234,7 +2234,7 @@ function ArcAppShell() {
       await switchOrAddArcNetwork();
       setChainId(activeArcChain.id);
       setIsArcNetwork(true);
-      showToast('Switched to Arc Osaka EVM', 'success', 2500);
+      showToast('Switched to BNB Smart Chain', 'success', 2500);
       if (walletAddress) refreshBalance(walletAddress);
     } catch (e) {
       const switchErr = e?.message || e?.reason || (typeof e === 'string' ? e : 'Failed to switch network.');
@@ -2268,7 +2268,7 @@ function ArcAppShell() {
               canonicalTag: mappedTag,
               cleanTag: mappedTag.replace('₦', ''),
               resolvedAddress: '0x18b6255efb9c9f0b2405086ee50a11ca47250e20',
-              network: 'Arc Osaka EVM',
+              network: 'BNB Smart Chain',
               isVerified: true,
               source: 'Nigerian Telco Gateway',
               phone: displayPhone,
@@ -2349,7 +2349,7 @@ function ArcAppShell() {
       const progress = await submitArcTask({ taskId: task.id, walletAddress, deliverable: submission, taskTitle: task.title, rewardUSDC: task.rewardUSDC, points: task.points, sessionToken: getArcSessionToken(walletAddress), authProvider });
       setTaskProgress((previous) => ({ ...previous, [task.id]: progress }));
       setTaskSubmissionDraft('');
-      showToast('Submission saved to the Arc task service for owner review.', 'success');
+      showToast('Submission saved to the BNB Chain task service for owner review.', 'success');
     } catch (error) {
       showToast(error.message || 'Could not submit this task.', 'error', 4000);
     }
@@ -2450,9 +2450,9 @@ function ArcAppShell() {
   };
 
   const handleInviteToEarn = () => {
-    const inviteUrl = myTag?.tag ? getTagShareUrl(myTag.tag) : 'https://arc.nairatag.ng/#claim';
+    const inviteUrl = myTag?.tag ? getTagShareUrl(myTag.tag) : 'https://bnb.nairatag.ng/#claim';
     triggerCopy('invite_link', inviteUrl);
-    showToast('🔗 Invite Link Copied! Share with friends to earn 10% fee rebates on Arc.', 'success', 3500);
+    showToast('🔗 Invite Link Copied! Share with friends to earn 10% fee rebates on BNB Chain.', 'success', 3500);
   };
 
   const handleCreateTask = async (e) => {
@@ -2522,7 +2522,7 @@ function ArcAppShell() {
     setAgentChatMessages((prev) => ({ ...prev, [agentId]: newMsgs }));
     setAgentChatInput('');
     try {
-      const agentTag = selectedAgentProfile?.tag || 'arc';
+      const agentTag = selectedAgentProfile?.tag || 'binance';
       const result = await sendArcChatMessage({
         walletAddress,
         conversationId: getOrCreateArcChatConversationId(walletAddress, agentTag),
@@ -2554,7 +2554,7 @@ function ArcAppShell() {
           tokenIn: swapTokenIn,
           tokenOut: swapTokenOut,
           amountIn: swapAmountIn,
-          fromChain: 'Arc',
+          fromChain: 'BNB Chain',
           toChain: swapTargetChain,
         });
         setSwapEstimate(quote);
@@ -2645,17 +2645,17 @@ function ArcAppShell() {
         rewardState = rewardUpdate.state;
         applyArcRewardState(rewardState);
       } catch (rewardError) {
-        rewardSyncError = rewardError.message || 'Arc rewards could not be synchronized.';
+        rewardSyncError = rewardError.message || 'Rewards could not be synchronized.';
         setArcRewardsError(rewardSyncError);
       }
-      if (rewardSyncError) setArcRewardsError(`Payment succeeded on Arc, but rewards sync is pending: ${rewardSyncError}`);
+      if (rewardSyncError) setArcRewardsError(`Payment succeeded on BNB Chain, but rewards sync is pending: ${rewardSyncError}`);
 
       refreshBalance(walletAddress);
       setAmountInput('');
       setMemoInput('');
     } catch (err) {
-      showToast(err.message || 'Payment failed on Arc.', 'error', 3500);
-      setSendError(err.message || 'Payment failed on Arc.');
+      showToast(err.message || 'Payment failed on BNB Chain.', 'error', 3500);
+      setSendError(err.message || 'Payment failed on BNB Chain.');
     } finally {
       setIsSending(false);
       setChatActivityStep('thinking');
@@ -2677,7 +2677,7 @@ function ArcAppShell() {
         tokenIn: swapTokenIn,
         tokenOut: swapTokenOut,
         amountIn: swapAmountIn,
-        fromChain: 'Arc',
+        fromChain: 'BNB Chain',
         toChain: swapTargetChain,
       });
 
@@ -2686,13 +2686,13 @@ function ArcAppShell() {
         type: 'swap',
         txHash: res.txHash,
         amount: `${swapAmountIn} ${swapTokenIn} ➔ ${swapEstimate?.amountOut || ''} ${swapTokenOut}`,
-        recipient: 'Arc App Kit Swap',
-        explorerUrl: `https://explorer.arc.io/tx/${res.txHash}`,
+        recipient: 'BNB App Kit Swap',
+        explorerUrl: `https://bscscan.com/tx/${res.txHash}`,
       });
       setIsCelebrationOpen(true);
       refreshBalance(walletAddress);
     } catch (err) {
-      const swapErr = err?.message || err?.reason || (typeof err === 'string' ? err : 'Swap failed on Arc.');
+      const swapErr = err?.message || err?.reason || (typeof err === 'string' ? err : 'Swap failed on BNB Chain.');
       showToast(`Swap failed: ${swapErr}`, 'error', 4000);
       alert(`Swap failed: ${swapErr}`);
     } finally {
@@ -2791,7 +2791,7 @@ function ArcAppShell() {
       id: String(registration.agentId),
       tag: cleanTag,
       name: `₦${cleanTag.toUpperCase()}`,
-      role: `NairaTag agent on Arc Â· ERC-8004 #${registration.agentId}`,
+      role: `NairaTag agent on BNB Chain · ID #${registration.agentId}`,
       category: 'NairaTag',
       owner,
       avatar: `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(cleanTag)}`,
@@ -2830,7 +2830,7 @@ function ArcAppShell() {
     } else {
       registration = await registerNairaTagAgent({ fromAddress: owner, tag: cleanTag });
     }
-    if (!registration.agentId) throw new Error('Arc did not return an ERC-8004 agent ID. The NairaTag is claimed; retry the agent link.');
+    if (!registration.agentId) throw new Error('BNB Chain did not return an ERC-8004 agent ID. The NairaTag is claimed; retry the agent link.');
     return persistArcAgentLink(cleanTag, owner, registration);
   };
 
@@ -3120,7 +3120,7 @@ function ArcAppShell() {
         refreshBalance(walletAddress).catch(() => {});
       })();
     } catch (e) {
-      const claimErr = e?.message || e?.reason || (typeof e === 'string' ? e : 'Claim failed on Arc.');
+      const claimErr = e?.message || e?.reason || (typeof e === 'string' ? e : 'Claim failed on BNB Chain.');
       showToast(`Claim failed: ${claimErr}`, 'error', 4000);
     } finally {
       setIsClaiming(false);
@@ -3140,7 +3140,7 @@ function ArcAppShell() {
         {/* Left Side: Brand Logo Badge + Mobile Hamburger Menu */}
         <div className="app-header-left">
           <div className="app-brand" onClick={() => setMainTab('chat')}>
-            <div className="brand-badge" title="NairaTag on Arc">
+            <div className="brand-badge" title="NairaTag on BNB Chain">
               <img src="/nairatag-logo.png" alt="NairaTag" className="brand-logo-img" />
             </div>
           </div>
@@ -3271,7 +3271,7 @@ function ArcAppShell() {
                   </button>
 
                   <a
-                    href={`https://explorer.arc.io/address/${ARC_NAIRATAG_REGISTRY_ADDRESS}`}
+                    href={`https://bscscan.com/address/${ARC_NAIRATAG_REGISTRY_ADDRESS}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="more-menu-item"
@@ -3282,7 +3282,7 @@ function ArcAppShell() {
                   </a>
 
                   <a
-                    href={`https://explorer.arc.io/address/${ARC_NAIRATAG_RESOLVER_ADDRESS}`}
+                    href={`https://bscscan.com/address/${ARC_NAIRATAG_RESOLVER_ADDRESS}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="more-menu-item"
@@ -3293,21 +3293,21 @@ function ArcAppShell() {
                   </a>
 
                   <a
-                    href="https://erc-8004.quicknode.com/agents?network=arc-testnet"
+                    href="https://bscscan.com/address/0x6d3950a390c7f60287d545cc5785c594e07439f9"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="more-menu-item"
                     onClick={() => setIsMoreMenuOpen(false)}
                   >
                     <Bot size={15} />
-                    <span>8004scan (Arc Testnet AI Agents) ↗</span>
+                    <span>BscScan (BNB Chain Agents) ↗</span>
                   </a>
 
                   <div className="more-menu-divider" />
 
                   <div className="more-menu-meta">
                     <span className="more-menu-dot" />
-                    <span>Arc Osaka EVM (5042)</span>
+                    <span>BNB Smart Chain (56)</span>
                   </div>
                 </div>
               </>
@@ -3945,7 +3945,7 @@ function ArcAppShell() {
                   </div>
                 </div>
                 <div className="token-input-footer">
-                  <span>Arc USDC</span>
+                  <span>BNB</span>
                   <div className="balance-quick-chips">
                     <button type="button" className="quick-chip-btn" onClick={() => setAmountInput('5.00')}>5</button>
                     <button type="button" className="quick-chip-btn" onClick={() => setAmountInput('10.00')}>10</button>
@@ -4023,7 +4023,7 @@ function ArcAppShell() {
                       fontWeight: 700,
                     }}>
                       <Check size={13} strokeWidth={3} />
-                      <span>Identity Active on Arc</span>
+                      <span>Identity Active on BNB Chain</span>
                     </div>
 
                     <div
@@ -4290,7 +4290,7 @@ function ArcAppShell() {
 
             {agentDirectoryError && (
               <div className="agent-directory-notice" role="status">
-                <span>Could not load the Arc agent registry: {agentDirectoryError}</span>
+                <span>Could not load the BNB Chain agent registry: {agentDirectoryError}</span>
                 <button type="button" onClick={() => loadAgentDirectory()} disabled={agentDirectoryLoading}>
                   {agentDirectoryLoading ? 'Retrying…' : 'Try again'}
                 </button>
@@ -4298,7 +4298,7 @@ function ArcAppShell() {
             )}
 
             {agentDirectoryLoading && chatAgents.length === 0 && (
-              <div className="agent-directory-empty" role="status">Loading agents from the Arc registry…</div>
+              <div className="agent-directory-empty" role="status">Loading agents from the BNB Chain registry…</div>
             )}
             {!agentDirectoryLoading && !agentDirectoryError && chatAgents.length === 0 && (
               <div className="agent-directory-empty" role="status">No agents have been listed yet.</div>
@@ -4506,10 +4506,10 @@ function ArcAppShell() {
                           <CheckCircle2 size={17} />
                           <div>
                             <strong>Task reward paid</strong>
-                            <span>The Arc task service confirms this bounty as paid.</span>
+                            <span>The BNB Chain task service confirms this bounty as paid.</span>
                             <span className="task-share-actions">
                               <a href={getTwitterTaskShareUrl({ title: selectedTask.title, rewardUSDC: selectedTask.rewardUSDC, points: selectedTask.points, userTag: myTag?.tag })} target="_blank" rel="noopener noreferrer">Share on X</a>
-                              <a href={getTelegramShareIntentUrl({ text: `I completed "${selectedTask.title}" and received its task reward on NairaTag.`, url: myTag?.tag ? getTagShareUrl(myTag.tag) : 'https://arc.nairatag.ng/#tasks' })} target="_blank" rel="noopener noreferrer">Share on Telegram</a>
+                              <a href={getTelegramShareIntentUrl({ text: `I completed "${selectedTask.title}" and received its task reward on NairaTag.`, url: myTag?.tag ? getTagShareUrl(myTag.tag) : 'https://bnb.nairatag.ng/#tasks' })} target="_blank" rel="noopener noreferrer">Share on Telegram</a>
                             </span>
                           </div>
                         </div>
@@ -4518,10 +4518,10 @@ function ArcAppShell() {
                           <CheckCircle2 size={17} />
                           <div>
                             <strong>Submission saved</strong>
-                            <span>Sent to the Arc task service for bounty owner review.</span>
+                            <span>Sent to the BNB Chain task service for bounty owner review.</span>
                             <span className="task-share-actions">
                               <a href={getTwitterTaskShareUrl({ title: selectedTask.title, rewardUSDC: selectedTask.rewardUSDC, points: selectedTask.points, userTag: myTag?.tag })} target="_blank" rel="noopener noreferrer">Share on X</a>
-                              <a href={getTelegramShareIntentUrl({ text: `I submitted "${selectedTask.title}" on NairaTag. My bounty is pending task-owner review.`, url: myTag?.tag ? getTagShareUrl(myTag.tag) : 'https://arc.nairatag.ng/#tasks' })} target="_blank" rel="noopener noreferrer">Share on Telegram</a>
+                              <a href={getTelegramShareIntentUrl({ text: `I submitted "${selectedTask.title}" on NairaTag. My bounty is pending task-owner review.`, url: myTag?.tag ? getTagShareUrl(myTag.tag) : 'https://bnb.nairatag.ng/#tasks' })} target="_blank" rel="noopener noreferrer">Share on Telegram</a>
                             </span>
                           </div>
                         </div>
@@ -4698,7 +4698,7 @@ function ArcAppShell() {
 
                     <h3 className="tasks-empty-title">
                       {tasksLoading
-                        ? 'Syncing Arc Escrow Bounties…'
+                        ? 'Syncing BNB Chain Escrow Bounties…'
                         : (tasksSearch || tasksFilter !== 'all')
                           ? 'No Matching Tasks Found'
                           : 'No tasks available'}
@@ -4707,7 +4707,7 @@ function ArcAppShell() {
                     {(tasksLoading || tasksSearch || tasksFilter !== 'all') && (
                       <p className="tasks-empty-subtitle">
                         {tasksLoading
-                          ? 'Connecting to Arc Osaka smart contracts and querying verified community milestones…'
+                          ? 'Connecting to BNB Smart Chain smart contracts and querying verified community milestones…'
                           : tasksSearch
                             ? `No bounties match "${tasksSearch}". Try clearing your search or switching categories.`
                             : 'There are no open bounties in this category yet. Explore other categories or post one yourself.'}
@@ -4769,7 +4769,7 @@ function ArcAppShell() {
                             alt=""
                             aria-hidden="true"
                             style={{ width: '16px', height: '16px', objectFit: 'contain', flexShrink: 0 }}
-                            title="Arc Escrow Verified"
+                            title="BNB Chain Escrow Verified"
                           />
                         </div>
                         <div className="milestone-card-role" title={task.title}>{task.title}</div>
@@ -5310,8 +5310,8 @@ function ArcAppShell() {
                       >
                         <MessageSquare size={14} />
                         <span className="walley-history-item-copy">
-                          <strong>{conversation.title || 'Arc chat'}</strong>
-                          <small>₦{conversation.agent_tag || 'arc'} Â· {new Date(conversation.updated_at).toLocaleString()}</small>
+                          <strong>{conversation.title || 'Agent chat'}</strong>
+                          <small>₦{conversation.agent_tag || 'binance'} Â· {new Date(conversation.updated_at).toLocaleString()}</small>
                         </span>
                       </button>
                     ))}
@@ -5348,7 +5348,7 @@ function ArcAppShell() {
                 <input
                   type="text"
                   className="faq-search-input"
-                  placeholder="Search questions: arc, usdc, claim, agents, resolver, keys, fees..."
+                  placeholder="Search questions: bnb, usdc, claim, agents, resolver, keys, fees..."
                   value={faqSearchQuery}
                   onChange={(e) => setFaqSearchQuery(e.target.value)}
                 />
@@ -5366,7 +5366,7 @@ function ArcAppShell() {
               <div className="faq-filter-chips">
                 {[
                   { id: 'all', label: 'All' },
-                  { id: 'arc', label: 'Arc & USDC' },
+                  { id: 'bnb', label: 'BNB Chain & BNB' },
                   { id: 'claim', label: 'Claiming ₦Tag' },
                   { id: 'agents', label: 'AI Agents (ERC-8004)' },
                   { id: 'resolver', label: 'Resolver Layer' },
@@ -5454,7 +5454,7 @@ function ArcAppShell() {
               <div className="faq-help-left">
                 <div className="faq-help-title">Still have questions or need assistance?</div>
                 <div className="faq-help-sub">
-                  Explore verified AI Agents on Arc Osaka EVM or claim your sovereign ₦Tag handle today.
+                  Explore verified AI Agents on BNB Smart Chain or claim your sovereign ₦Tag handle today.
                 </div>
               </div>
               <div className="faq-help-actions">
@@ -5637,14 +5637,14 @@ function ArcAppShell() {
                   <Flame size={12} />
                   <span>Gas Token & Floor</span>
                 </span>
-                <span className="details-value">Arc USDC (18 dec) • 20 Gwei min</span>
+                <span className="details-value">BNB (18 dec) • 3 Gwei min</span>
               </div>
               <div className="details-row">
                 <span className="details-label">
                   <Clock size={12} />
                   <span>Expected Finality</span>
                 </span>
-                <span className="details-value">&lt; 1s (Deterministic Osaka EVM)</span>
+                <span className="details-value">&lt; 3s (BNB Smart Chain)</span>
               </div>
               {memoInput.trim() && (
                 <div className="details-row">
@@ -5793,13 +5793,13 @@ function ArcAppShell() {
               </a>
               {celebrationDetails.erc8004Id && (
                 <a
-                  href={`https://erc-8004.quicknode.com/agents/arc-testnet/${celebrationDetails.erc8004Id}`}
+                  href={`https://bscscan.com/address/${celebrationDetails.walletAddress || walletAddress}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="quick-chip-btn"
                   style={{ textAlign: 'center', justifyContent: 'center', padding: '6px', marginTop: '6px' }}
                 >
-                  View ERC-8004 agent #{celebrationDetails.erc8004Id} ↗
+                  View agent on BscScan ↗
                 </a>
               )}
               {celebrationDetails.erc8004LinkError && (
@@ -6270,7 +6270,7 @@ function ArcAppShell() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Wallet size={16} color="var(--privy-color-interactive)" />
-                <span className="card-header-title">Arc Sovereign Portfolio</span>
+                <span className="card-header-title">BNB Chain Sovereign Portfolio</span>
               </div>
               <button
                 type="button"
@@ -6289,7 +6289,7 @@ function ArcAppShell() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 800 }}>{displayUserTag || 'Sovereign Wallet'}</span>
-                  <span className="card-net-pill">Arc Osaka</span>
+                  <span className="card-net-pill">BNB Smart Chain</span>
                   {authProvider === 'privy' && (
                     <span className="circle-tag-pill" style={{ fontSize: '9px', padding: '1px 6px' }}>Privy</span>
                   )}
@@ -6313,7 +6313,7 @@ function ArcAppShell() {
             {/* Dual Valuation Balances */}
             <div style={{ marginTop: '10px', padding: '14px', background: 'var(--privy-color-background-surface-2)', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
               <div style={{ fontSize: '11px', color: 'var(--privy-color-foreground-2)', fontWeight: 600, textTransform: 'uppercase' }}>
-                Total Arc Balance
+                Total BNB Balance
               </div>
               <div style={{ fontSize: '26px', fontWeight: 800, color: 'var(--privy-color-foreground)', margin: '4px 0' }}>
                 {usdcBalance.formatted} USDC
@@ -6363,7 +6363,7 @@ function ArcAppShell() {
                   }}
                 >
                   <Send size={14} />
-                  <span>Send USDC on Arc</span>
+                  <span>Send on BNB Chain</span>
                 </button>
                 <div style={{ display: 'flex', gap: '6px' }}>
                   <button
@@ -6394,12 +6394,12 @@ function ArcAppShell() {
                 {walletAddress ? (
                   <>
                     <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`arc:${walletAddress}?tag=₦${myTag?.tag || ''}`)}`}
-                      alt="Arc Receive QR"
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`bnb:${walletAddress}?tag=₦${myTag?.tag || ''}`)}`}
+                      alt="BNB Receive QR"
                       style={{ width: '160px', height: '160px', borderRadius: '8px', border: '1px solid var(--privy-color-border-subtle)', margin: '0 auto 8px' }}
                     />
                     <div style={{ fontSize: '11px', color: 'var(--privy-color-foreground-2)' }}>
-                      Scan to receive USDC or resolve {displayUserTag || 'wallet'} on Arc Osaka EVM.
+                      Scan to receive BNB or resolve {displayUserTag || 'wallet'} on BNB Smart Chain.
                     </div>
                   </>
                 ) : (
@@ -6525,7 +6525,7 @@ function ArcAppShell() {
       />
       <ArcVoiceCall
         voice={voice}
-        agentTag={currentTaggedAgent?.tag || 'arc'}
+        agentTag={currentTaggedAgent?.tag || 'binance'}
         agentName={currentTaggedAgent?.name || (myTag?.tag ? `₦${myTag.tag}` : 'NairaTag Agent')}
         accountEmail={accountEmail}
       />

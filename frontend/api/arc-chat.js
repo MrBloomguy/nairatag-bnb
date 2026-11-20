@@ -120,8 +120,8 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     return res.status(200).json({
       ok: true,
-      service: 'NairaTag Arc Agent Chat API',
-      network: 'Arc Mainnet (Chain ID 5042)',
+      service: 'NairaTag BNB Agent Chat API',
+      network: 'BNB Smart Chain (Chain ID 56)',
       activeModels: CANDIDATE_MODELS,
       defaultModel: CANDIDATE_MODELS[0]
     });
@@ -147,7 +147,7 @@ export default async function handler(req, res) {
   const agentInfo = OFFICIAL_AGENTS[rawAgentTag] || {
     tag: `₦${rawAgentTag.toUpperCase()}`,
     displayName: `@${rawAgentTag}`,
-    role: `Sovereign user-claimed agent (₦${rawAgentTag.toUpperCase()}) on Arc Mainnet.`,
+    role: `Sovereign user-claimed agent (₦${rawAgentTag.toUpperCase()}) on BNB Smart Chain.`,
     address: null
   };
 
@@ -159,7 +159,7 @@ export default async function handler(req, res) {
     for (const match of tagMatches.slice(0, 3)) {
       const resData = await resolveTagAddress(match);
       if (resData) {
-        resolvedLookups.push(`- Tag: ${resData.tag} -> Arc Address: ${resData.address}`);
+        resolvedLookups.push(`- Tag: ${resData.tag} -> BNB Address: ${resData.address}`);
       }
     }
     if (resolvedLookups.length > 0) {

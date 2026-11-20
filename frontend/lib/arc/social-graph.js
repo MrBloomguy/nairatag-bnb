@@ -302,7 +302,7 @@ export default async function handler(req, res) {
       const originHost = originUrl.host.toLowerCase();
       const requestHost = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0].trim().toLowerCase();
       const isLocal = ['localhost', '127.0.0.1'].includes(originUrl.hostname.toLowerCase());
-      const isArcSite = originUrl.hostname.toLowerCase() === 'arc.nairatag.ng';
+      const isArcSite = originUrl.hostname.toLowerCase() === 'bnb.nairatag.ng';
       const isVercelPreview = originUrl.hostname.toLowerCase().endsWith('.vercel.app');
       if (originHost !== requestHost && !isLocal && !isArcSite && !isVercelPreview) {
         return json(res, 403, { ok: false, error: 'Cross-origin requests are not allowed.' });

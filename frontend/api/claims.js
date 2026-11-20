@@ -155,7 +155,7 @@ export default async function handler(req, res) {
             tag: `₦${c.tag.toUpperCase()}`,
             cleanTag: c.tag.toLowerCase(),
             address: getAddress(c.wallet_address),
-            network: c.network || 'Arc Mainnet',
+            network: c.network || 'BNB Smart Chain',
             isVerified: true,
             reputation: 100,
           });
@@ -173,7 +173,7 @@ export default async function handler(req, res) {
             tag: a.display_name || `₦${a.tag.toUpperCase()}`,
             cleanTag: a.tag.toLowerCase(),
             address: getAddress(a.owner_wallet),
-            network: 'Arc Mainnet',
+            network: 'BNB Smart Chain',
             isVerified: true,
             reputation: 100,
           });
@@ -181,7 +181,7 @@ export default async function handler(req, res) {
 
         return res.status(404).json({
           ok: false,
-          error: `NairaTag ₦${clean.toUpperCase()} not found in canonical Arc registry.`,
+          error: `NairaTag ₦${clean.toUpperCase()} not found in canonical BNB Chain registry.`,
         });
       }
 
@@ -201,7 +201,7 @@ export default async function handler(req, res) {
               tag: agentMatch[1].tag,
               cleanTag: agentMatch[0],
               address: getAddress(agentMatch[1].address),
-              network: 'Arc Mainnet',
+              network: 'BNB Smart Chain',
               reputation: 100,
             },
           });
@@ -221,7 +221,7 @@ export default async function handler(req, res) {
               tag: `₦${c.tag.toUpperCase()}`,
               cleanTag: c.tag.toLowerCase(),
               address: getAddress(c.wallet_address),
-              network: c.network || 'Arc Mainnet',
+              network: c.network || 'BNB Smart Chain',
               timestamp: c.claimed_at ? new Date(c.claimed_at).getTime() : Date.now(),
               reputation: 100,
             },
@@ -238,7 +238,7 @@ export default async function handler(req, res) {
           return res.status(200).json({
             ok: false,
             isTaken: true,
-            reason: `₦${clean.toUpperCase()} is an official sovereign protocol agent on Arc.`,
+            reason: `₦${clean.toUpperCase()} is an official sovereign protocol agent on BNB Chain.`,
           });
         }
 
@@ -250,7 +250,7 @@ export default async function handler(req, res) {
           return res.status(200).json({
             ok: false,
             isTaken: true,
-            reason: `₦${clean.toUpperCase()} is already claimed on Arc.`,
+            reason: `₦${clean.toUpperCase()} is already claimed on BNB Chain.`,
           });
         }
 
@@ -279,7 +279,7 @@ export default async function handler(req, res) {
       if (RESERVED_PROTOCOL_AGENTS[tag]) {
         const reserved = RESERVED_PROTOCOL_AGENTS[tag];
         if (reserved.address.toLowerCase() !== wallet) {
-          return res.status(400).json({ ok: false, error: `₦${tag.toUpperCase()} is an official sovereign protocol agent on Arc.` });
+          return res.status(400).json({ ok: false, error: `₦${tag.toUpperCase()} is an official sovereign protocol agent on BNB Chain.` });
         }
       }
 

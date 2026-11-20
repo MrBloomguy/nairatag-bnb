@@ -169,8 +169,8 @@ export default function NotificationLayer({ onNavigateTab, onOpenRewards, accoun
       if (streakAvailable) reminders.push('Claim todayâ€™s streak points');
       if (state.spins.available > 0) reminders.push('use your free spin');
       sendNotificationAlert({
-        title: 'Your daily Arc rewards are waiting',
-        body: `${reminders.join(' and ')} before midnight. One confirmed Arc USDC payment can unlock a second spin today.`,
+        title: 'Your daily rewards are waiting',
+        body: `${reminders.join(' and ')} before midnight. One confirmed BNB Chain payment can unlock a second spin today.`,
         type: 'reward', actionLabel: 'Open Rewards', url: '/#rewards', showToast: true, showSystemNotification: true,
       });
     }).catch(() => {});
@@ -278,7 +278,7 @@ export default function NotificationLayer({ onNavigateTab, onOpenRewards, accoun
             </div>
             <div>
           <div className="push-pill-title">Stay in the rewards loop</div>
-              <div className="push-pill-sub">Get browser alerts for spins, streaks, referrals and Arc payments</div>
+              <div className="push-pill-sub">Get browser alerts for spins, streaks, referrals and BNB Chain payments</div>
             </div>
           </div>
 

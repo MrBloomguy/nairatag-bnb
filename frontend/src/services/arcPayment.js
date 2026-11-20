@@ -201,13 +201,13 @@ export async function estimateTransferFee(fromAddress, toAddress, amountUsdc) {
     return {
       gasLimit: estimatedGas.toString(),
       estimatedUsdc: '< $0.001',
-      details: 'Sub-second finality on Arc',
+      details: 'Fast finality on BNB Smart Chain',
     };
   } catch (err) {
     return {
       gasLimit: '65000',
       estimatedUsdc: '< $0.001',
-      details: 'Standard Arc Transfer',
+      details: 'Standard BNB Chain Transfer',
     };
   }
 }
@@ -317,7 +317,7 @@ export async function sendUsdcOnArc({
     throw new Error('No transaction hash returned from wallet.');
   }
 
-  onStatusUpdate({ step: 'confirming', message: 'Waiting for Arc confirmation...' });
+  onStatusUpdate({ step: 'confirming', message: 'Waiting for BNB Chain confirmation...' });
   // Wait for deterministic sub-second receipt on Arc
   const receipt = await publicClient.waitForTransactionReceipt({
     hash,
@@ -326,7 +326,7 @@ export async function sendUsdcOnArc({
   });
 
   if (receipt.status !== 'success') {
-    throw new Error(`Transaction reverted on Arc. Tx Hash: ${hash}`);
+    throw new Error(`Transaction reverted on BNB Chain. Tx Hash: ${hash}`);
   }
 
   const explorerUrl = `${activeArcChain.blockExplorers.default.url}/tx/${hash}`;

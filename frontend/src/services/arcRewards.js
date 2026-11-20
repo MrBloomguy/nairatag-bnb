@@ -34,7 +34,7 @@ function mapState(value = {}) {
 
 async function parseResponse(response) {
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok || !payload.ok) throw new Error(payload.error || `Arc rewards service returned ${response.status}.`);
+  if (!response.ok || !payload.ok) throw new Error(payload.error || `Binance rewards service returned ${response.status}.`);
   return payload;
 }
 

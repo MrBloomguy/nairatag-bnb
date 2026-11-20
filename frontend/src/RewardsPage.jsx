@@ -111,7 +111,7 @@ export function GoldenVoucherModal({ isOpen, onClose, onClaimSuccess }) {
         {/* Main Golden Card */}
         <div className="golden-modal-card">
           <h2 className="golden-modal-title">
-            Send on Arc and save<br />up to 50%
+            Send on BNB Chain and save<br />up to 50%
           </h2>
           <p className="golden-modal-subtitle">
             Get instant protocol discounts & voucher packs now!
@@ -247,14 +247,14 @@ export function LuckyWheelModal({ isOpen, onClose, onWinPrize, accountKey = '', 
       setSpinMessage('Points rewards are unavailable right now. Please reload and try again.');
       return;
     }
-    setSpinMessage('Connecting securely to Arc rewards…');
+    setSpinMessage('Connecting securely to Binance rewards…');
     setIsSpinPending(true);
     let consumed;
     try {
       consumed = await consumeDailySpin(activeKey);
       setSpinStats(consumed.stats);
       const selectedIndex = WHEEL_PRIZES.findIndex((prize) => prize.id === consumed.prize?.id);
-      if (!consumed.ok || selectedIndex < 0) throw new Error('The Arc rewards service did not return a valid spin result.');
+      if (!consumed.ok || selectedIndex < 0) throw new Error('The Binance rewards service did not return a valid spin result.');
       onWinPrize({ ...WHEEL_PRIZES[selectedIndex], value: consumed.prize.points }, consumed.state);
     } catch (error) {
       setSpinMessage(error.message || 'Could not save this spin. Please try again.');
@@ -326,7 +326,7 @@ export function LuckyWheelModal({ isOpen, onClose, onWinPrize, accountKey = '', 
 
         <div className="wheel-spin-condition-pill">
           <Sparkles size={11} />
-          <span>One free spin daily · A confirmed Arc USDC payment earns one more</span>
+          <span>One free spin daily · A confirmed BNB Chain payment earns one more</span>
         </div>
 
         {/* Wheel Stage */}
@@ -450,7 +450,7 @@ export function LuckyWheelModal({ isOpen, onClose, onWinPrize, accountKey = '', 
               <h3 className="congrats-title">Spin & Win Rules</h3>
               <p className="congrats-subtitle" style={{ textAlign: 'left', lineHeight: '1.6', marginTop: '12px' }}>
                 • You receive one free spin each day.<br /><br />
-                • One successful Arc USDC payment confirmed on-chain unlocks one extra spin, up to two spins total each day.<br /><br />
+                • One successful BNB Chain payment confirmed on-chain unlocks one extra spin, up to two spins total each day.<br /><br />
                 • Each of the eight Protocol Points prizes has an equal chance. The selected reward is credited immediately, and a started spin cannot be replayed.
               </p>
               <button
@@ -500,7 +500,7 @@ export function CongratulationsModal({ isOpen, onClose, prize }) {
                 <Sparkles size={18} />
               </div>
               <div style={{ textAlign: 'left' }}>
-                <div className="congrats-item-title">{prize?.label || 'Arc Rewards Bonus'}</div>
+                <div className="congrats-item-title">{prize?.label || 'Binance Rewards Bonus'}</div>
                 <div style={{ fontSize: '11px', color: '#6b7280' }}>Added to your Protocol Points balance</div>
               </div>
             </div>
@@ -572,7 +572,7 @@ export function ReferralModal({ isOpen, onClose, userTag = '', accountKey = '', 
       setCopied(true);
       sendNotificationAlert({
         title: 'Invite link ready to share',
-        body: `Your friend can earn ${REFERRAL_SIGNUP_POINTS} Protocol Points after claiming a NairaTag, then ${REFERRAL_FIRST_PAYMENT_POINTS} more after their first confirmed Arc payment.`,
+        body: `Your friend can earn ${REFERRAL_SIGNUP_POINTS} Protocol Points after claiming a NairaTag, then ${REFERRAL_FIRST_PAYMENT_POINTS} more after their first confirmed BNB Chain payment.`,
         type: 'reward',
         actionLabel: 'View referral rewards',
         url: '/#rewards',
@@ -909,7 +909,7 @@ export default function RewardsPage({
   }, [accountKey, referralTag, todayKey]);
 
   const totalPoints = Number(pointsBalance) || 0;
-  const serviceNotice = serviceError ? <div className="referral-ledger-note" role="status">Arc rewards are not syncing: {serviceError}</div> : null;
+  const serviceNotice = serviceError ? <div className="referral-ledger-note" role="status">Rewards are not syncing: {serviceError}</div> : null;
 
   useEffect(() => {
     const dateRefresh = setInterval(() => setTodayKey(getLocalDateKey()), 60_000);
@@ -1023,7 +1023,7 @@ export default function RewardsPage({
 
           <div className="rewards-counter-col">
             <div className="rewards-counter-label-wrap">
-              <span>USDC on Arc</span>
+              <span>BNB on BSC</span>
               <Info size={13} color="#6b7280" />
             </div>
             <div className="rewards-counter-value-row">
@@ -1080,7 +1080,7 @@ export default function RewardsPage({
       <div className="rewards-section rewards-asset-section">
         <div className="rewards-section-header">
           <span className="rewards-section-title">Reward assets</span>
-          <span className="rewards-pill-tag">Arc</span>
+          <span className="rewards-pill-tag">BNB</span>
         </div>
         <div className="rewards-assets-grid">
           <article className="rewards-asset-card rewards-asset-points">
@@ -1089,7 +1089,7 @@ export default function RewardsPage({
           </article>
           <article className="rewards-asset-card rewards-asset-usdc">
             <span className="rewards-asset-symbol">$</span>
-            <div><strong>USDC</strong><span>{usdcBalance?.formatted || '0.00'} on Arc Mainnet</span></div>
+            <div><strong>BNB</strong><span>{usdcBalance?.formatted || '0.00'} on BNB Smart Chain</span></div>
           </article>
           <article className="rewards-asset-card rewards-asset-cngn">
             <span className="rewards-asset-symbol">₦</span>
@@ -1100,7 +1100,7 @@ export default function RewardsPage({
         <div className="rewards-social-share-row" aria-label="Share your rewards">
           <span>Share your NairaTag rewards</span>
           <a href={getTwitterRewardShareUrl({ points: totalPoints, userTag })} target="_blank" rel="noopener noreferrer">Share on X</a>
-          <a href={getTelegramShareIntentUrl({ text: `I am earning Protocol Points and exploring tasks on NairaTag.`, url: userTag ? getTagShareUrl(userTag) : 'https://arc.nairatag.ng/#rewards' })} target="_blank" rel="noopener noreferrer">Share on Telegram</a>
+          <a href={getTelegramShareIntentUrl({ text: `I am earning Protocol Points and exploring tasks on NairaTag.`, url: userTag ? getTagShareUrl(userTag) : 'https://bnb.nairatag.ng/#rewards' })} target="_blank" rel="noopener noreferrer">Share on Telegram</a>
         </div>
       </div>
 
@@ -1175,13 +1175,13 @@ export default function RewardsPage({
           </div>
           <div className="voucher-ticket-body">
             <div>
-              <div className="voucher-ticket-title">Arc Osaka Gas Subsidy</div>
+              <div className="voucher-ticket-title">BNB Chain Gas Subsidy</div>
               <div className="voucher-ticket-sub">Subsidized USDC transfers</div>
             </div>
             <button
               type="button"
               className="voucher-ticket-use-btn"
-              onClick={() => handleUseVoucher('₦50 Arc Gas Subsidy')}
+              onClick={() => handleUseVoucher('₦50 BNB Gas Subsidy')}
             >
               Use
             </button>
@@ -1294,7 +1294,7 @@ export default function RewardsPage({
           className="rewards-view-all-btn"
           onClick={() => setActiveRewardPage('spin')}
         >
-          <span>View All Arc Incentives</span>
+          <span>View All Binance Incentives</span>
           <ChevronRight size={14} />
         </button>
       </div>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getOriginalAgentLogo } from '../../services/arcAgents.js';
 
-const DEFAULT_AGENT_AVATAR = 'https://api.dicebear.com/7.x/identicon/svg?seed=arc-agent';
+const DEFAULT_AGENT_AVATAR = 'https://api.dicebear.com/7.x/identicon/svg?seed=bnb-agent';
 const INTENTS = [
   {
     id: 'food',
@@ -56,7 +56,7 @@ const INTENTS = [
 const STATUS_COPY = {
   waiting: 'Waiting for your wallet approval',
   transacting: 'Sending your transaction',
-  confirming: 'Confirming it on Arc',
+  confirming: 'Confirming it on BNB Chain',
 };
 
 const GENERAL_INTENT = {

@@ -137,7 +137,7 @@ export default function RedesignedProfilePage({
             <ProfileAvatar tag={myTag?.tag} email={accountEmail} size={54} />
             <div className="settings-profile-info">
               <h2 className="settings-profile-name">{displayName}</h2>
-              <div className="settings-profile-sub">{accountEmail || (walletAddress ? `${walletAddress.slice(0, 8)}…${walletAddress.slice(-6)}` : 'Arc Account')}</div>
+              <div className="settings-profile-sub">{accountEmail || (walletAddress ? `${walletAddress.slice(0, 8)}…${walletAddress.slice(-6)}` : 'BNB Account')}</div>
               {cleanTag ? (
                 <span className="profile-verified-badge" style={{ fontSize: 11, gap: 4 }}>
                   <ShieldCheck size={12} color="#0052FF" /> Verified ₦Tag
@@ -456,7 +456,7 @@ export default function RedesignedProfilePage({
                     <span className="settings-item-icon"><Sparkles size={16} color="#BBF246" /></span>
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 700 }}>₦{String(item.tag).replace(/^[$₦]/, '').toUpperCase()}</div>
-                      <div style={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.5)' }}>{item.activity === 'used' ? 'Transacted on Arc' : 'Just claimed'}</div>
+                      <div style={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.5)' }}>{item.activity === 'used' ? 'Transacted on BNB Chain' : 'Just claimed'}</div>
                     </div>
                   </div>
                   <div className="settings-item-right">

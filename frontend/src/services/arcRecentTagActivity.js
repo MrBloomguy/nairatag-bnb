@@ -22,25 +22,13 @@ const REVERSE_RESOLVER_ABI = [
  */
 export async function getRecentArcTagActivity(limit = 12) {
   const latestBlock = await publicClient.getBlockNumber();
-  const [claimLogs, transferResponse] = await Promise.all([
-    publicClient.getLogs({
-      address: ARC_NAIRATAG_REGISTRY_ADDRESS,
-      event: CLAIMED_EVENT,
-      fromBlock: latestBlock > 2500n ? latestBlock - 2500n : 0n,
-      toBlock: latestBlock,
-    }),
-    fetch(`https://explorer.arc.io/api/v2/tokens/${ARC_USDC_ADDRESS}/transfers`, {
-      headers: { Accept: 'application/json' },
-    }),
-  ]);
-  if (!transferResponse.ok) throw new Error(`Arc explorer activity returned ${transferResponse.status}.`);
-  const transferPayload = await transferResponse.json();
-  const transferLogs = (transferPayload.items || []).map((item) => ({
-    args: { from: item.from?.hash, to: item.to?.hash, value: BigInt(item.total?.value || item.total?.decimal || 0) },
-    blockNumber: BigInt(item.block_number || 0),
-    transactionHash: item.tx_hash || item.transaction_hash || null,
-    timestamp: item.timestamp,
-  }));
+  const claimLogs = await publicClient.getLogs({
+    address: ARC_NAIRATAG_REGISTRY_ADDRESS,
+    event: CLAIMED_EVENT,
+    fromBlock: latestBlock > 2500n ? latestBlock - 2500n : 0n,
+    toBlock: latestBlock,
+  }).catch(() => []);
+  const transferLogs = [];
 
   const newestClaimByOwner = new Map();
   const activities = [];

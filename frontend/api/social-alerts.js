@@ -6,7 +6,7 @@ const NETWORKS = {
     name: 'Arc Mainnet',
     registry: '0xb3a2d06ead0a889485a844a63be309c4df4b17b3',
     rpcUrl: process.env.ARC_MAINNET_RPC_URL || 'https://rpc.mainnet.arc.io',
-    explorer: 'https://explorer.arc.io',
+    explorer: 'https://bscscan.com',
   },
   testnet: {
     chainId: 5042002,
@@ -177,11 +177,11 @@ function alertText(body) {
     const digest = body.action === 'submit' && /^[a-f\d]{64}$/i.test(String(body.deliverableHash || ''))
       ? `\nDeliverable SHA-256: ${String(body.deliverableHash).toLowerCase()}`
       : '';
-    return `NairaTag task update\n${wallet} ${status}: ${title}.${reward}${review}\nTask ID: ${cleanText(body.taskId, 90)}${digest}\nArc Network - https://arc.nairatag.ng/#tasks`;
+    return `NairaTag task update\n${wallet} ${status}: ${title}.${reward}${review}\nTask ID: ${cleanText(body.taskId, 90)}${digest}\nArc Network - https://bnb.nairatag.ng/#tasks`;
   }
   if (body.kind === 'task_paid') {
     const title = cleanText(body.title || body.taskId);
-    return `NairaTag task reward\n${wallet} completed: ${title}.${Number(body.rewardUSDC) > 0 ? ` Reward paid: $${Number(body.rewardUSDC)} USDC and ${Number(body.points) || 0} Protocol Points.` : ' Reward status: paid.'}\nTask ID: ${cleanText(body.taskId, 90)}\nArc Network - https://arc.nairatag.ng/#tasks`;
+    return `NairaTag task reward\n${wallet} completed: ${title}.${Number(body.rewardUSDC) > 0 ? ` Reward paid: $${Number(body.rewardUSDC)} USDC and ${Number(body.points) || 0} Protocol Points.` : ' Reward status: paid.'}\nTask ID: ${cleanText(body.taskId, 90)}\nArc Network - https://bnb.nairatag.ng/#tasks`;
   }
   if (body.kind === 'reward') {
     if (body.action === 'referral_signup') {
@@ -189,7 +189,7 @@ function alertText(body) {
       const referrerClean = cleanText(body.referrerTag || '', 32).replace(/^[₦$@#]/, '').trim().toUpperCase();
       const friendDisplay = friendClean ? `₦${friendClean}` : wallet;
       const referrerDisplay = referrerClean ? `₦${referrerClean}` : '₦COMMUNITY';
-      return `🎉 CONGRATULATIONS : ${friendDisplay} joined with ${referrerDisplay}. 100 Points rewarded.\n\nArc Network · https://arc.nairatag.ng/#rewards`;
+      return `🎉 CONGRATULATIONS : ${friendDisplay} joined with ${referrerDisplay}. 100 Points rewarded.\n\nArc Network · https://bnb.nairatag.ng/#rewards`;
     }
     const messages = {
       daily_claim: 'claimed a daily Protocol Points reward.',
@@ -199,7 +199,7 @@ function alertText(body) {
       agent_onboarding_step: 'completed an AI agent setup milestone.',
     };
     if (!messages[body.action]) throw new Error('This reward action cannot be announced.');
-    return `NairaTag reward update\n${wallet} ${messages[body.action]}\nNairaTag Rewards - https://arc.nairatag.ng/#rewards`;
+    return `NairaTag reward update\n${wallet} ${messages[body.action]}\nNairaTag Rewards - https://bnb.nairatag.ng/#rewards`;
   }
   throw new Error('Unsupported alert type.');
 }
@@ -241,7 +241,7 @@ export default async function handler(req, res) {
     try {
       const originHost = new URL(origin).hostname.toLowerCase();
       const isAllowedHost = 
-        originHost === 'arc.nairatag.ng' ||
+        originHost === 'bnb.nairatag.ng' ||
         originHost === 'nairatag.ng' ||
         originHost.endsWith('.nairatag.ng') ||
         originHost.endsWith('.vercel.app') ||
@@ -270,7 +270,7 @@ export default async function handler(req, res) {
         '',
         `Welcome, ₦${cleanUpper}!`,
         '',
-        'Find your people and share your NairaTag: https://arc.nairatag.ng',
+        'Find your people and share your NairaTag: https://bnb.nairatag.ng',
       ].join('\n'));
       return sendJson(res, 200, { ok: true, messageId: sent });
     }
@@ -307,7 +307,7 @@ export default async function handler(req, res) {
         ...(explorerUrl ? [`Explorer: ${explorerUrl}`] : []),
         `Settlement: ${execTime} (Sub-second deterministic finality)`,
         '',
-        'Send native USDC on Arc: https://arc.nairatag.ng',
+        'Send native USDC on Arc: https://bnb.nairatag.ng',
       ].join('\n'));
       return sendJson(res, 200, { ok: true, messageId: sent });
     }

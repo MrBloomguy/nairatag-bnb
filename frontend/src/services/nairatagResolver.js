@@ -424,7 +424,7 @@ export async function checkTagAvailability(rawTag, walletAddress = null) {
     return {
       available: false,
       isTaken: true,
-      reason: `₦${clean.toUpperCase()} is an official sovereign protocol agent on Arc.`,
+      reason: `₦${clean.toUpperCase()} is an official sovereign protocol agent on BNB Chain.`,
     };
   }
 
@@ -479,7 +479,7 @@ export async function getTagForWallet(walletAddress) {
       hasTag: true,
       tag: known[1].tag,
       cleanTag: known[0],
-      network: 'Arc Mainnet',
+      network: 'BNB Smart Chain',
       claimedAt: Date.now(),
       reputation: 100,
     };
@@ -496,7 +496,7 @@ export async function getTagForWallet(walletAddress) {
           hasTag: true,
           tag: data.claim.tag,
           cleanTag: data.claim.cleanTag || data.claim.tag.replace(/^₦/, ''),
-          network: data.claim.network || 'Arc Mainnet',
+          network: data.claim.network || 'BNB Smart Chain',
           claimedAt: data.claim.timestamp || Date.now(),
           reputation: data.claim.reputation || 100,
         };
@@ -637,7 +637,7 @@ export async function claimTag({
       handle: norm.cleanTag,
       walletAddress: targetWallet.toLowerCase(),
       account: targetWallet.toLowerCase(),
-      network: 'Arc Osaka EVM',
+      network: 'BNB Smart Chain',
       signature: finalSignature,
       message,
       nonce: finalNonce,

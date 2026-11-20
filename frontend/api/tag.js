@@ -54,7 +54,7 @@ export default function handler(req, res) {
     }
 
     const html = getBaseHtml();
-    const forwardedHost = req.headers['x-forwarded-host'] || req.headers.host || 'arc.nairatag.ng';
+    const forwardedHost = req.headers['x-forwarded-host'] || req.headers.host || 'bnb.nairatag.ng';
     const host = String(forwardedHost).split(',')[0].trim();
     const proto = String(req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim();
     const origin = `${proto}://${host}`;
@@ -62,10 +62,10 @@ export default function handler(req, res) {
     const tag = `₦${handle.toUpperCase()}`;
     const tagUrl = isAgent ? `${origin}/agent/${encodeURIComponent(handle)}` : `${origin}/tag/${encodeURIComponent(handle)}`;
     const imageUrl = `${origin}/cards/${encodeURIComponent(handle)}.png?mode=og&network=arc`;
-    const title = isAgent ? `${tag} · Sovereign Agent on Arc` : `${tag} · NairaTag on Arc`;
+    const title = isAgent ? `${tag} · Sovereign Agent on BNB Chain` : `${tag} · NairaTag on BNB Chain`;
     const description = isAgent
-      ? `Pay, chat with, and assign bounties to ${tag}, an autonomous sovereign agent on Arc Mainnet.`
-      : `Send USDC on Arc directly to ${tag}, a human-readable NairaTag identity.`;
+      ? `Pay, chat with, and assign bounties to ${tag}, an autonomous sovereign agent on BNB Smart Chain.`;
+      : `Send crypto on BNB Chain directly to ${tag}, a human-readable NairaTag identity.`;
 
     let page = html.includes('<title>')
       ? html.replace(/<title>[^<]*<\/title>/i, `<title>${escapeAttribute(title)}</title>`)

@@ -152,12 +152,12 @@ export async function lockTaskBountyOnChain({
       args: [ARC_NAIRATAG_ESCROW_ADDRESS, rewardUnits * 10n], // Approve enough to avoid repeat popups
     });
 
-    onStatusUpdate({ step: 'waiting_approval', message: 'Confirming USDC approval on Arc...' });
+    onStatusUpdate({ step: 'waiting_approval', message: 'Confirming token approval on BNB Chain...' });
     await publicClient.waitForTransactionReceipt({ hash: approveTx });
   }
 
   // 2. Call lockBounty on NairaTagBountyEscrow
-  onStatusUpdate({ step: 'locking', message: 'Locking USDC bounty into Escrow contract...' });
+  onStatusUpdate({ step: 'locking', message: 'Locking bounty into Escrow contract...' });
   const cleanCreatorTag = String(creatorTag || '').replace(/^[₦$@#]/, '').trim();
 
   const lockTx = await walletClient.writeContract({
@@ -168,11 +168,11 @@ export async function lockTaskBountyOnChain({
     args: [bytes32Id, cleanCreatorTag, ARC_USDC_ADDRESS, rewardUnits, deadlineSeconds],
   });
 
-  onStatusUpdate({ step: 'confirming', message: 'Waiting for Arc Mainnet finality...' });
+  onStatusUpdate({ step: 'confirming', message: 'Waiting for BNB Chain confirmation...' });
   const receipt = await publicClient.waitForTransactionReceipt({ hash: lockTx });
 
   if (receipt.status !== 'success') {
-    throw new Error(`Escrow deposit reverted on Arc. Tx Hash: ${lockTx}`);
+    throw new Error(`Escrow deposit reverted on BNB Chain. Tx Hash: ${lockTx}`);
   }
 
   return {
@@ -254,7 +254,7 @@ export async function submitDeliverableOnChain({
     transport: custom(provider),
   });
 
-  onStatusUpdate({ step: 'submitting', message: 'Recording deliverable hash on Arc Mainnet...' });
+  onStatusUpdate({ step: 'submitting', message: 'Recording deliverable hash on BNB Smart Chain...' });
   const tx = await walletClient.writeContract({
     account: getAddress(fromAddress),
     address: ARC_NAIRATAG_ESCROW_ADDRESS,
@@ -273,8 +273,8 @@ export async function submitDeliverableOnChain({
 }
 
 /**
- * Releases locked USDC bounty to the assigned worker on Arc Mainnet.
- * Emits BountyReleased event and transfers USDC directly to worker!
+ * Releases locked bounty to the assigned worker on BNB Smart Chain.
+ * Emits BountyReleased event and transfers payout directly to worker!
  */
 export async function releaseTaskBountyOnChain({
   taskId,
@@ -295,7 +295,7 @@ export async function releaseTaskBountyOnChain({
     transport: custom(provider),
   });
 
-  onStatusUpdate({ step: 'releasing', message: 'Releasing USDC escrow payout on Arc Mainnet...' });
+  onStatusUpdate({ step: 'releasing', message: 'Releasing escrow payout on BNB Smart Chain...' });
   const tx = await walletClient.writeContract({
     account: getAddress(fromAddress),
     address: ARC_NAIRATAG_ESCROW_ADDRESS,
@@ -304,11 +304,11 @@ export async function releaseTaskBountyOnChain({
     args: [bytes32Id],
   });
 
-  onStatusUpdate({ step: 'confirming', message: 'Waiting for Arc confirmation...' });
+  onStatusUpdate({ step: 'confirming', message: 'Waiting for BNB Chain confirmation...' });
   const receipt = await publicClient.waitForTransactionReceipt({ hash: tx });
 
   if (receipt.status !== 'success') {
-    throw new Error(`Escrow payout release reverted on Arc. Tx Hash: ${tx}`);
+    throw new Error(`Escrow payout release reverted on BNB Chain. Tx Hash: ${tx}`);
   }
 
   return {

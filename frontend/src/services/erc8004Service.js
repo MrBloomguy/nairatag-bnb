@@ -87,7 +87,7 @@ export async function getAgentDetails(agentId) {
       metadata,
     };
   } catch (err) {
-    throw new Error(`Failed to fetch AI Agent #${agentId} on Arc: ${err.message}`);
+    throw new Error(`Failed to fetch AI Agent #${agentId} on BNB Chain: ${err.message}`);
   }
 }
 
@@ -95,11 +95,11 @@ export async function getAgentDetails(agentId) {
 export async function findArcAgentForTag(rawTag, ownerAddress) {
   if (!ownerAddress || !isAddress(ownerAddress)) return null;
   const tag = String(rawTag || '').replace(/^[₦$@#]/, '').trim().toLowerCase();
-  const explorerApiBase = activeArcChain.id === 5042 ? 'https://explorer.arc.io' : 'https://explorer.testnet.arc.io';
+  const explorerApiBase = activeArcChain.id === 5042 ? 'https://bscscan.com' : 'https://explorer.testnet.arc.io';
   const url = new URL(`${explorerApiBase}/api/v2/tokens/${ARC_ERC8004_IDENTITY_REGISTRY}/instances`);
   url.searchParams.set('holder_address_hash', getAddress(ownerAddress));
   const response = await fetch(url, { headers: { Accept: 'application/json' } });
-  if (!response.ok) throw new Error(`ArcScan agent lookup returned ${response.status}.`);
+  if (!response.ok) throw new Error(`BscScan agent lookup returned ${response.status}.`);
   const payload = await response.json();
   for (const token of (payload.items || []).slice(0, 20)) {
     try {
@@ -111,7 +111,7 @@ export async function findArcAgentForTag(rawTag, ownerAddress) {
         id: String(token.id),
         tag,
         name: details.metadata?.name || `₦${tag}`,
-        role: details.metadata?.description || 'NairaTag agent on Arc',
+        role: details.metadata?.description || 'NairaTag agent on BNB Chain',
         category: 'NairaTag',
         avatar: details.metadata?.image || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(tag)}`,
         owner: details.owner,
@@ -129,7 +129,7 @@ export async function findArcAgentForTag(rawTag, ownerAddress) {
 export function buildNairaTagAgentMetadataUri(rawTag, agentId = null) {
   const tag = String(rawTag || '').trim().replace(/^[₦$@#]/, '').toLowerCase();
   if (!/^[a-z0-9_]{3,32}$/.test(tag) || tag.startsWith('_') || tag.endsWith('_') || tag.includes('__')) {
-    throw new Error('A valid Arc NairaTag is required to create the ERC-8004 record.');
+    throw new Error('A valid NairaTag is required to create the agent record.');
   }
   // The ₦ prefix is the canonical on-chain identity, not presentation-only
   // formatting. Keep it in both the ERC-8004 display name and NairaTag field.
@@ -138,8 +138,8 @@ export function buildNairaTagAgentMetadataUri(rawTag, agentId = null) {
     type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
     name: canonicalTag,
     description: `NairaTag agent identity for ${canonicalTag} on Arc Testnet. Use this tag to discover the registered identity and pay its owner in USDC through NairaTag.`,
-    image: 'https://arc.nairatag.ng/nairatag-logo.png',
-    services: [{ name: 'NairaTag', endpoint: 'https://arc.nairatag.ng/' }],
+    image: 'https://bnb.nairatag.ng/nairatag-logo.png',
+    services: [{ name: 'NairaTag', endpoint: 'https://bnb.nairatag.ng/' }],
     x402Support: false,
     active: true,
     registrations: agentId === null ? [] : [{
@@ -302,7 +302,7 @@ export async function registerAiAgent({ fromAddress, metadataURI }) {
   });
 
   if (receipt.status !== 'success') {
-    throw new Error(`Agent registration failed on Arc. Hash: ${txHash}`);
+    throw new Error(`Agent registration failed on BNB Chain. Hash: ${txHash}`);
   }
 
   // Parse Transfer event to get assigned Agent Token ID
@@ -320,7 +320,7 @@ export async function registerAiAgent({ fromAddress, metadataURI }) {
       }
     } catch { /* Ignore non-ERC721 logs in the receipt. */ }
   }
-  if (!assignedId) throw new Error(`Registration was mined, but Arc did not return the new ERC-8004 agent ID. Transaction: ${txHash}`);
+  if (!assignedId) throw new Error(`Registration was mined, but BNB Chain did not return the agent ID. Transaction: ${txHash}`);
 
   return {
     success: true,
@@ -370,7 +370,7 @@ export async function recordAgentFeedback({ fromAddress, agentId, score, tag, co
   });
 
   if (receipt.status !== 'success') {
-    throw new Error(`Reputation recording failed on Arc. Hash: ${txHash}`);
+    throw new Error(`Reputation recording failed on BNB Chain. Hash: ${txHash}`);
   }
 
   return {

@@ -6,7 +6,7 @@
     "description": "AI agent economy and autonomous settlement platform on Arc Testnet (Chain ID: 5042002). Features native NairaTag handles (@tag / ₦TAG), ERC-8004 onchain verified agent identity registries, Circle Agent Wallets, peer-to-peer x402 nanopayments, and autonomous marketplace tools including DefiLlama (@defillama), Open-Meteo (@meteo), and CoinGecko (@coingecko).",
     "contact": {
       "name": "NairaTag Protocol",
-      "url": "https://arc.nairatag.ng",
+      "url": "https://bnb.nairatag.ng",
       "email": "support@nairatag.ng"
     },
     "license": {
@@ -17,7 +17,7 @@
   },
   "servers": [
     {
-      "url": "https://arc.nairatag.ng",
+      "url": "https://bnb.nairatag.ng",
       "description": "NairaTag Arc Production Endpoint"
     }
   ],

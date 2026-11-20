@@ -334,11 +334,11 @@ const RETIRED_TASK_TITLES = new Set([
   'design dark-canvas sovereign agent card assets',
   'build an opera minipay deep-link widget',
   'forex spot rate verification (usdc / ngn)',
-  'defi tvl & price benchmark feed on arc mainnet',
-  'supply defi tvl & protocol liquidity rankings for arc agents',
+  'defi tvl & price benchmark feed on bnb smart chain',
+  'supply defi tvl & protocol liquidity rankings for bnb agents',
   'weather & city commerce oracle telemetry',
-  'sub-second settlement benchmark on arc mainnet',
-  'monitor the arc mainnet tag',
+  'sub-second settlement benchmark on bnb smart chain',
+  'monitor the bnb smart chain tag',
   'defi tvl & liquidity health audit',
   'commercial delivery weather risk clearance',
   'real-time fx exchange rate benchmark',
@@ -369,13 +369,13 @@ function normalizeTaskDetails(value = {}) {
   };
 }
 
-function signedActionMessage({ action, taskId, walletAddress, timestamp, deliverable = '', task, chainId }) {
+function signedActionMessage({ action, taskId, walletAddress, timestamp, deliverable = '', task, chainId }, prefix = 'NairaTag BNB Tasks') {
   const deliverableHash = action === 'submit'
     ? createHash('sha256').update(String(deliverable).trim(), 'utf8').digest('hex')
     : '';
   const chain = chainId || ARC_CHAIN_ID;
   return [
-    'NairaTag Arc Tasks',
+    prefix,
     `Action: ${action}`,
     `Task: ${taskId}`,
     `Wallet: ${normalizeWallet(walletAddress)}`,
@@ -437,13 +437,27 @@ async function verifyWalletAction(req, body) {
     task: body.task,
   });
 
+  let valid = false;
   try {
-    const valid = await verifyMessage({ address: walletAddress, message, signature: body.signature });
-    if (!valid) {
-      throw new Error('Wallet signature could not be verified.');
-    }
-  } catch (sigErr) {
-    throw new Error(`Signature verification failed: ${sigErr.message}`);
+    valid = await verifyMessage({ address: walletAddress, message, signature: body.signature });
+  } catch {}
+
+  if (!valid) {
+    try {
+      const fallbackMessage = signedActionMessage({
+        action: body.action,
+        taskId: body.taskId,
+        walletAddress,
+        timestamp,
+        deliverable: body.deliverable,
+        task: body.task,
+      }, 'NairaTag Arc Tasks');
+      valid = await verifyMessage({ address: walletAddress, message: fallbackMessage, signature: body.signature });
+    } catch {}
+  }
+
+  if (!valid) {
+    throw new Error('Wallet signature could not be verified.');
   }
 
   return { walletAddress, provider: 'wallet' };

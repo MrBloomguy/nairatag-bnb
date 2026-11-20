@@ -21,8 +21,8 @@ import {
 } from 'lucide-react';
 import './NairaTagLandingPage.css';
 
-const APP_URL = 'https://arc.nairatag.ng/';
-const CLAIM_URL = 'https://arc.nairatag.ng/#claim';
+const APP_URL = 'https://bnb.nairatag.ng/';
+const CLAIM_URL = 'https://bnb.nairatag.ng/#claim';
 
 const features = [
   {
@@ -98,7 +98,7 @@ const faqs = [
   },
   {
     question: 'Which networks does NairaTag support?',
-    answer: 'NairaTag is deployed on Celo and Arc. Available actions and assets can differ by network, account type, and connected wallet; the app shows the options supported for each action.',
+    answer: 'NairaTag is deployed on BNB Chain. Available actions and assets can differ by network, account type, and connected wallet; the app shows the options supported for each action.',
   },
   {
     question: 'Do I need a crypto wallet?',
@@ -128,10 +128,10 @@ const faqs = [
 
 export default function NairaTagLandingPage() {
   useEffect(() => {
-    document.title = 'NairaTags — Your identity and personal agent on Celo and Arc';
+    document.title = 'NairaTags — Your identity and personal agent on BNB Chain';
     document.querySelector('meta[name="description"]')?.setAttribute(
       'content',
-      'Claim a NairaTag, personalize your agent, chat or speak, create tasks, manage memory, and explore Celo and Arc.',
+      'Claim a NairaTag, personalize your agent, chat or speak, create tasks, manage memory, and explore BNB Chain.',
     );
   }, []);
 
@@ -144,7 +144,7 @@ export default function NairaTagLandingPage() {
         </a>
         <nav className="nt-nav" aria-label="Main navigation">
           <a href="#features">Features</a>
-          <a href="#networks">Celo + Arc</a>
+          <a href="#networks">BNB Chain</a>
           <a href="#faq">FAQ</a>
           <a className="nt-nav-cta" href={APP_URL}>Open NairaTags <ArrowUpRight size={16} /></a>
         </nav>
@@ -157,7 +157,7 @@ export default function NairaTagLandingPage() {
             <h1>A name that is yours.<br />An agent that works with you.</h1>
             <p className="nt-hero-lead">
               Claim a NairaTag, make your agent personal, and use it to talk, handle tasks,
-              remember what matters, and explore services across Celo and Arc.
+              remember what matters, and explore services across BNB Chain.
             </p>
             <div className="nt-hero-actions">
               <a className="nt-button nt-button-lime" href={CLAIM_URL}>Claim your NairaTag <ArrowRight size={18} /></a>
@@ -195,7 +195,7 @@ export default function NairaTagLandingPage() {
           <div className="nt-network-label">ONE NAIRATAG EXPERIENCE ACROSS</div>
           <div className="nt-network-item"><span className="nt-network-mark nt-network-mark-celo">C</span><span><b>Celo</b><small>Identity and payments</small></span></div>
           <div className="nt-network-divider" />
-          <div className="nt-network-item"><span className="nt-network-mark nt-network-mark-arc">A</span><span><b>Arc</b><small>Agents and on-chain actions</small></span></div>
+          <div className="nt-network-item"><span className="nt-network-mark nt-network-mark-arc">B</span><span><b>BNB Chain</b><small>Agents and on-chain actions</small></span></div>
           <a href={APP_URL}>See what is available <ArrowUpRight size={15} /></a>
         </section>
 
@@ -233,7 +233,7 @@ export default function NairaTagLandingPage() {
           <div className="nt-identity-copy">
             <span className="nt-kicker">MADE FOR PEOPLE, NOT JUST WALLETS</span>
             <h2>Start with email.<br />Connect a wallet when you want.</h2>
-            <p>NairaTags are designed to feel approachable whether this is your first on-chain app or you already use Celo and Arc.</p>
+            <p>NairaTags are designed to feel approachable whether this is your first on-chain app or you already use BNB Chain.</p>
           </div>
           <div className="nt-identity-list">
             <span><ShieldCheck size={18} /> Email sign-in with Circle</span>
@@ -273,7 +273,7 @@ export default function NairaTagLandingPage() {
 
       <footer className="nt-footer section-wrap">
         <a className="nt-brand" href="/" aria-label="NairaTags home"><img src="/nairatag-logo.png" alt="" /><span>NairaTags</span></a>
-        <span>Identity and personal agents on Celo and Arc.</span>
+        <span>Identity and personal agents on BNB Chain.</span>
         <div><a href={APP_URL}>Open NairaTags</a><a href={CLAIM_URL}>Claim a tag</a><a href="#faq">FAQ</a></div>
       </footer>
     </div>

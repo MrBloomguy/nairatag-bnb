@@ -66,7 +66,7 @@ export async function checkArcTagAvailability(rawTag, walletAddress = null, emai
       owner: agent.owner,
       cleanTag,
       canonicalTag: `₦${cleanTag.toUpperCase()}`,
-      reason: `₦${cleanTag.toUpperCase()} is an official sovereign protocol agent on Arc.`,
+      reason: `₦${cleanTag.toUpperCase()} is an official sovereign protocol agent on BNB Chain.`,
     };
   }
 
@@ -105,7 +105,7 @@ export async function checkArcTagAvailability(rawTag, walletAddress = null, emai
             walletRestricted: true,
             existingTag,
             cleanTag,
-            reason: `This wallet already owns ₦${existingTag.toUpperCase()} on Arc. Each sovereign account is limited to 1 NairaTag.`,
+            reason: `This wallet already owns ₦${existingTag.toUpperCase()} on BNB Chain. Each sovereign account is limited to 1 NairaTag.`,
           };
         }
       }
@@ -119,7 +119,7 @@ export async function checkArcTagAvailability(rawTag, walletAddress = null, emai
         isTaken: true,
         cleanTag,
         canonicalTag: `₦${cleanTag.toUpperCase()}`,
-        reason: tagCheckData.reason || `₦${cleanTag.toUpperCase()} is already claimed on Arc.`,
+        reason: tagCheckData.reason || `₦${cleanTag.toUpperCase()} is already claimed on BNB Chain.`,
       };
     }
   } catch (apiErr) {
@@ -133,12 +133,12 @@ export async function checkArcTagAvailability(rawTag, walletAddress = null, emai
       getWalletTagRecord(walletAddress),
     ]);
     if (owner !== ZERO_ADDRESS) {
-      return { available: false, isTaken: true, owner, cleanTag, canonicalTag: `₦${cleanTag.toUpperCase()}`, reason: `₦${cleanTag.toUpperCase()} is already claimed on Arc.` };
+      return { available: false, isTaken: true, owner, cleanTag, canonicalTag: `₦${cleanTag.toUpperCase()}`, reason: `₦${cleanTag.toUpperCase()} is already claimed on BNB Chain.` };
     }
     if (walletTag) {
       const existingTag = walletTag.record.canonical || walletTag.record[3] || '';
       if (existingTag && existingTag.toLowerCase() !== cleanTag) {
-        return { available: false, walletRestricted: true, existingTag, cleanTag, reason: `This account already owns ₦${existingTag.toUpperCase()} on Arc. Each sovereign account is limited to 1 NairaTag.` };
+        return { available: false, walletRestricted: true, existingTag, cleanTag, reason: `This account already owns ₦${existingTag.toUpperCase()} on BNB Chain. Each sovereign account is limited to 1 NairaTag.` };
       }
     }
     return { available: true, cleanTag, canonicalTag: `₦${cleanTag.toUpperCase()}` };
@@ -169,7 +169,7 @@ export async function getArcTagForWallet(walletAddress) {
           tag: `₦${clean.toUpperCase()}`,
           cleanTag: clean,
           owner: claim.walletAddress,
-          network: 'Arc Mainnet',
+          network: 'BNB Smart Chain',
           claimedAt: claim.claimedAt ? new Date(claim.claimedAt).getTime() : Date.now(),
         };
       }
@@ -188,7 +188,7 @@ export async function getArcTagForWallet(walletAddress) {
         hasTag: true,
         tag: `₦${clean.toUpperCase()}`,
         cleanTag: clean,
-        network: dbData.claim.network || 'Arc Mainnet',
+        network: dbData.claim.network || 'BNB Smart Chain',
         claimedAt: dbData.claim.timestamp || Date.now(),
       };
     }
@@ -202,7 +202,7 @@ export async function getArcTagForWallet(walletAddress) {
     if (result) {
       const record = result.record;
       const tag = record.canonical || record[3] || '';
-      if (tag) return { hasTag: true, tag: `₦${tag.toUpperCase()}`, cleanTag: tag.toLowerCase(), network: 'Arc Mainnet', claimedAt: Number(record.registeredAt ?? record[2] ?? 0n) * 1000 };
+      if (tag) return { hasTag: true, tag: `₦${tag.toUpperCase()}`, cleanTag: tag.toLowerCase(), network: 'BNB Smart Chain', claimedAt: Number(record.registeredAt ?? record[2] ?? 0n) * 1000 };
     }
   } catch (error) {
     console.warn('[getArcTagForWallet onchain check]', error.shortMessage || error.message);
@@ -213,7 +213,7 @@ export async function getArcTagForWallet(walletAddress) {
 
 export async function claimArcNairaTag({ rawTag, walletAddress }) {
   const cleanTag = normalizeArcTag(rawTag);
-  if (!walletAddress || !isAddress(walletAddress)) throw new Error('Connect a valid Arc wallet to claim a NairaTag.');
+  if (!walletAddress || !isAddress(walletAddress)) throw new Error('Connect a valid BNB wallet to claim a NairaTag.');
   const provider = getEthereumProvider();
   if (!provider) throw new Error('No EVM wallet provider detected.');
   const chainId = Number.parseInt(await provider.request({ method: 'eth_chainId' }), 16);
@@ -231,7 +231,7 @@ export async function claimArcNairaTag({ rawTag, walletAddress }) {
     args: [cleanTag, ARC_NAIRATAG_RESOLVER_ADDRESS],
   });
   const receipt = await publicClient.waitForTransactionReceipt({ hash, confirmations: 1, timeout: 30000 });
-  if (receipt.status !== 'success') throw new Error(`Arc tag claim failed. Transaction: ${hash}`);
+  if (receipt.status !== 'success') throw new Error(`BNB Chain tag claim failed. Transaction: ${hash}`);
 
   let claim = null;
   for (const log of receipt.logs) {

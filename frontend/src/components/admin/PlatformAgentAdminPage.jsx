@@ -117,7 +117,7 @@ export default function PlatformAgentAdminPage() {
       }
       setDirectoryError('');
     } catch (error) {
-      setDirectoryError(error.message || 'Could not load the Arc agent registry.');
+      setDirectoryError(error.message || 'Could not load the BNB Chain agent registry.');
       if (walletAddress) setOperationsError(error.message || 'Could not load admin operations.');
     } finally {
       setLoading(false);
@@ -129,7 +129,7 @@ export default function PlatformAgentAdminPage() {
     setNotice(null);
     try {
       await submitArcAdminAction(walletAddress, action, fields);
-      setNotice({ type: 'success', text: 'Saved to the Arc operations database.' });
+      setNotice({ type: 'success', text: 'Saved to the operations database.' });
       setOperations(await getArcAdminDashboard(walletAddress));
       return true;
     } catch (error) {
@@ -284,7 +284,7 @@ export default function PlatformAgentAdminPage() {
             </div>
             <div className="admin-brand-copy">
               <strong>NairaTag Admin</strong>
-              <span>Arc Sovereign Layer</span>
+              <span>BNB Chain Sovereign Layer</span>
             </div>
           </div>
         </div>
@@ -357,7 +357,7 @@ export default function PlatformAgentAdminPage() {
           <div className="admin-footer-status">
             <span className="admin-pulse-dot" />
             <div>
-              <strong>Arc Mainnet Â· 5042</strong>
+              <strong>BNB Smart Chain · 56</strong>
               <span>{walletAddress ? 'Admin data loaded on demand' : 'Connect an authorized admin wallet'}</span>
             </div>
           </div>
@@ -446,7 +446,7 @@ export default function PlatformAgentAdminPage() {
           <div className="admin-page-hero">
             <div>
               <h1>{activeNav === 'tasks' ? 'Tasks & Reviews' : activeNav === 'vouchers' ? 'Voucher Operations' : activeNav === 'referrals' ? 'Referral Monitor' : activeNav === 'rewards' ? 'Protocol Points Ledger' : 'Overview'}</h1>
-              <p>{activeNav === 'tasks' ? 'Create Arc tasks, review signed submissions, and grant the configured points reward.' : activeNav === 'vouchers' ? 'Manage voucher task offers and review completion claims.' : activeNav === 'referrals' ? 'Monitor referral signups, payment milestones, and points from the Arc ledger.' : activeNav === 'rewards' ? 'Review the points event ledger and grant auditable Protocol Points.' : 'Manage agent identities, MCP integrations, and their published chat capabilities.'}</p>
+              <p>{activeNav === 'tasks' ? 'Create BNB Chain tasks, review signed submissions, and grant the configured points reward.' : activeNav === 'vouchers' ? 'Manage voucher task offers and review completion claims.' : activeNav === 'referrals' ? 'Monitor referral signups, payment milestones, and points from the Arc ledger.' : activeNav === 'rewards' ? 'Review the points event ledger and grant auditable Protocol Points.' : 'Manage agent identities, MCP integrations, and their published chat capabilities.'}</p>
             </div>
             <div className="admin-hero-actions">
               {['registry', 'mcp', 'capabilities'].includes(activeNav) && <a href="#register" className="admin-btn-accent">
@@ -599,7 +599,7 @@ export default function PlatformAgentAdminPage() {
 
           {activeNav === 'referrals' && (
             <section className="admin-card-container table-card" style={{ marginBottom: 20 }}>
-              <div className="admin-table-title-group"><h2>Referral monitor</h2><p>Live records from the Arc referral ledger, including signup and first-payment milestones.</p></div>
+              <div className="admin-table-title-group"><h2>Referral monitor</h2><p>Live records from the BNB Chain referral ledger, including signup and first-payment milestones.</p></div>
               {operationsError ? <div className="admin-table-error">{operationsError}</div> : <div className="admin-table-responsive"><table className="admin-data-table"><thead><tr><th>Referrer</th><th>New user</th><th>Signup points</th><th>First payment</th><th>Payment points</th><th>Joined</th></tr></thead><tbody>{(operations?.referrals || []).map((referral) => <tr key={referral.referred_wallet}><td>{referral.referrer_tag} Â· {referral.referrer_wallet.slice(0, 8)}â€¦</td><td>{referral.referred_tag} Â· {referral.referred_wallet.slice(0, 8)}â€¦</td><td>{referral.signup_points}</td><td>{referral.first_payment_hash ? `${referral.first_payment_hash.slice(0, 12)}â€¦` : 'Not yet'}</td><td>{referral.payment_points}</td><td>{new Date(referral.created_at).toLocaleDateString()}</td></tr>)}</tbody></table></div>}
             </section>
           )}
@@ -840,7 +840,7 @@ export default function PlatformAgentAdminPage() {
                 <div className="admin-identity-card-mockup" style={{ borderColor: previewColor }}>
                   <div className="admin-card-mockup-top">
                     <span className="admin-mockup-naira">₦</span>
-                    <span className="admin-mockup-net">Arc Network</span>
+                    <span className="admin-mockup-net">BNB Chain</span>
                   </div>
 
                   <div className="admin-mockup-avatar-wrap">
@@ -913,7 +913,7 @@ export default function PlatformAgentAdminPage() {
             <div className="admin-table-toolbar">
               <div className="admin-table-title-group">
                 <h2>Registered Agent Identities</h2>
-                <p>All platform and MCP agents published on the Arc Sovereign Layer.</p>
+                <p>All platform and MCP agents published on BNB Chain.</p>
               </div>
 
               {/* Filter Pills */}

@@ -128,7 +128,7 @@ export default function TelegramClaimPage() {
     setStatusText('Confirming your account…');
     try {
       await loginWithCode({ code: otpCode.trim() });
-      setStatusText('Preparing your Arc wallet…');
+      setStatusText('Preparing your BNB wallet…');
       const deadline = Date.now() + 12000;
       let embeddedWallet = null;
       while (Date.now() < deadline) {
@@ -136,7 +136,7 @@ export default function TelegramClaimPage() {
         if (embeddedWallet) break;
         await new Promise((resolve) => setTimeout(resolve, 200));
       }
-      if (!embeddedWallet) throw new Error('Your secure Arc wallet is still being created. Please try again shortly.');
+      if (!embeddedWallet) throw new Error('Your secure BNB wallet is still being created. Please try again shortly.');
       const provider = await embeddedWallet.getEthereumProvider();
       setActiveWalletProvider(provider);
       const walletAddress = embeddedWallet.address;
@@ -145,7 +145,7 @@ export default function TelegramClaimPage() {
 
       const finalAvailability = await checkArcTagAvailability(cleanTag, walletAddress, email);
       if (!finalAvailability.available) throw new Error(finalAvailability.reason || 'This tag is no longer available.');
-      setStatusText('Registering your NairaTag on Arc…');
+      setStatusText('Registering your NairaTag on BNB Chain…');
       const claim = await claimArcNairaTag({ rawTag: cleanTag, walletAddress });
 
       let pointsSyncError = null;
@@ -167,7 +167,7 @@ export default function TelegramClaimPage() {
         setLinkWalletStatus('linked');
       } catch (linkError) {
         setLinkWalletStatus('retry');
-        setError(linkError.message || 'Your tag is on Arc, but Telegram account linking needs a retry.');
+        setError(linkError.message || 'Your tag is on BNB Chain, but Telegram account linking needs a retry.');
       }
       if (pointsSyncError) console.warn('[Telegram claim rewards sync]', pointsSyncError.message);
     } catch (claimError) {
@@ -194,7 +194,7 @@ export default function TelegramClaimPage() {
   };
 
   const shareTag = () => {
-    const url = `https://arc.nairatag.ng/tag/${encodeURIComponent(claimedTag)}`;
+    const url = `https://bnb.nairatag.ng/tag/${encodeURIComponent(claimedTag)}`;
     const text = `My tag is ₦${claimedTag.toUpperCase()} — your tag is your agent.`;
     const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
     try { window.Telegram?.WebApp?.openTelegramLink?.(shareUrl); }
@@ -227,7 +227,7 @@ export default function TelegramClaimPage() {
               <div id="tg-tag-status" className={`tg-tag-status ${availability?.available ? 'is-available' : ''}`} aria-live="polite">
                 {!telegramReady ? <><LoaderCircle className="tg-spin" size={15} /> {statusText}</>
                   : !cleanTag ? '3–32 letters or numbers; underscores can go inside.'
-                    : availability?.loading ? <><LoaderCircle className="tg-spin" size={15} /> Checking Arc registry…</>
+                    : availability?.loading ? <><LoaderCircle className="tg-spin" size={15} /> Checking BNB Chain registry…</>
                       : availability?.available ? <><CheckCircle2 size={16} /> ₦{cleanTag.toUpperCase()} is available</>
                         : availability?.reason || 'Check your tag again.'}
               </div>
@@ -250,10 +250,10 @@ export default function TelegramClaimPage() {
               <div className="tg-confirm-tag">₦{cleanTag.toUpperCase()}</div>
               <div className="tg-claim-details">
                 <div><span>Claim fee</span><strong>No NairaTag fee</strong></div>
-                <div><span>Network</span><strong>Arc Mainnet</strong></div>
+                <div><span>Network</span><strong>BNB Smart Chain</strong></div>
                 <div><span>Account</span><strong>Verified with Telegram + email</strong></div>
               </div>
-              <p className="tg-note">NairaTag will check your account eligibility again before it sends the on-chain claim. Privy email sign-in securely creates your Arc wallet; you do not need to connect a browser wallet.</p>
+              <p className="tg-note">NairaTag will check your account eligibility again before it sends the on-chain claim. Privy email sign-in securely creates your BNB wallet; you do not need to connect a browser wallet.</p>
               <button className="tg-primary-button" type="button" disabled={!telegramReady || busy} onClick={() => setStep('email')}>
                 Continue to claim <ArrowRight size={18} />
               </button>
@@ -265,7 +265,7 @@ export default function TelegramClaimPage() {
               <button className="tg-back-link" type="button" onClick={() => { setStep('confirm'); setError(''); }} disabled={busy}><ArrowLeft size={16} /> Back</button>
               <span className="tg-claim-label">SECURE ACCOUNT SETUP</span>
               <h2 className="tg-card-heading">{otpSent ? 'Check your email' : 'Continue with email'}</h2>
-              <p className="tg-card-copy">{otpSent ? `Enter the verification code sent to ${email}.` : 'Email verification creates your Arc wallet securely. You can link a personal wallet after your tag is claimed.'}</p>
+              <p className="tg-card-copy">{otpSent ? `Enter the verification code sent to ${email}.` : 'Email verification creates your BNB wallet securely. You can link a personal wallet after your tag is claimed.'}</p>
               {!otpSent ? (
                 <form onSubmit={requestCode}>
                   <label className="tg-claim-label" htmlFor="tg-claim-email">Email address</label>
@@ -283,7 +283,7 @@ export default function TelegramClaimPage() {
                 </button>
                 </>
               )}
-              <p className="tg-claim-footnote"><ShieldCheck size={14} /> Your claim is shown only after Arc confirms it.</p>
+              <p className="tg-claim-footnote"><ShieldCheck size={14} /> Your claim is shown only after BNB Chain confirms it.</p>
             </section>
           )}
         </>
@@ -301,17 +301,17 @@ export default function TelegramClaimPage() {
           <div className="tg-success-actions">
             <button className="tg-primary-button" type="button" onClick={shareTag}><Share2 size={17} /> Share NairaTag</button>
             <button className="tg-secondary-button" type="button" onClick={copyTag}><Copy size={16} /> Copy tag</button>
-            <a className="tg-secondary-button" href="https://arc.nairatag.ng/#profile" onClick={(event) => { event.preventDefault(); window.Telegram?.WebApp?.openLink?.('https://arc.nairatag.ng/#profile'); }}><ExternalLink size={16} /> Link another wallet later</a>
-            <a className="tg-secondary-button" href={`https://arc.nairatag.ng/tag/${encodeURIComponent(claimedTag)}`} target="_blank" rel="noreferrer">View NairaTag profile <ExternalLink size={15} /></a>
+            <a className="tg-secondary-button" href="https://bnb.nairatag.ng/#profile" onClick={(event) => { event.preventDefault(); window.Telegram?.WebApp?.openLink?.('https://bnb.nairatag.ng/#profile'); }}><ExternalLink size={16} /> Link another wallet later</a>
+            <a className="tg-secondary-button" href={`https://bnb.nairatag.ng/tag/${encodeURIComponent(claimedTag)}`} target="_blank" rel="noreferrer">View NairaTag profile <ExternalLink size={15} /></a>
           </div>
-          {claimTx && <a className="tg-explorer-link" href={`https://explorer.arc.io/tx/${claimTx}`} target="_blank" rel="noreferrer">View confirmed Arc transaction <ExternalLink size={14} /></a>}
+          {claimTx && <a className="tg-explorer-link" href={`https://bscscan.com/tx/${claimTx}`} target="_blank" rel="noreferrer">View confirmed BNB Chain transaction <ExternalLink size={14} /></a>}
           <div className="tg-agent-reminder"><Sparkles size={16} /><span>Next: make your tag an agent when you’re ready.</span></div>
         </section>
       )}
 
       {error && step !== 'success' && <div className="tg-claim-error" role="alert">{error}</div>}
       {(busy || !telegramReady || (otpSent && step === 'email')) && step !== 'success' && <div className="tg-live-status" aria-live="polite">{busy && <LoaderCircle className="tg-spin" size={14} />}{statusText}</div>}
-      <footer className="tg-claim-footer">NairaTag <span>•</span> Arc Mainnet</footer>
+      <footer className="tg-claim-footer">NairaTag <span>•</span> BNB Smart Chain</footer>
     </main>
   );
 }

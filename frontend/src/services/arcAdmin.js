@@ -23,7 +23,7 @@ async function read(response) {
 
 export async function getArcAdminDashboard(walletAddress) {
   const auth = await sign(walletAddress, 'dashboard', { action: 'dashboard' });
-  const base = typeof window !== 'undefined' ? window.location.origin : 'https://arc.nairatag.ng';
+  const base = typeof window !== 'undefined' ? window.location.origin : 'https://bnb.nairatag.ng';
   const url = new URL(API, base);
   Object.entries(auth).forEach(([key, value]) => url.searchParams.set(key, String(value)));
   return (await read(await fetch(url, { headers: { Accept: 'application/json' }, cache: 'no-store' }))).dashboard;

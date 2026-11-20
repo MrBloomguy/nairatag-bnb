@@ -51,7 +51,7 @@ const getAgentSpec = (handle = '') => {
       tools: [
         { name: 'defillama.tvl', desc: 'Real-time protocol TVL & chain rankings', badge: 'Live API', query: '₦defillama get TVL rankings' },
         { name: 'defillama.coins', desc: 'Token prices & liquidity pool stats', badge: 'Oracle', query: '₦defillama check stablecoin liquidity' },
-        { name: 'arc.usdc_settlement', desc: 'Instant peer-to-peer USDC payments', badge: 'Onchain', query: 'Send 5 USDC reward to ₦defillama' }
+        { name: 'bsc.bnb_settlement', desc: 'Instant peer-to-peer BNB payments', badge: 'Onchain', query: 'Send 0.01 BNB reward to ₦defillama' }
       ]
     };
   }
@@ -65,7 +65,7 @@ const getAgentSpec = (handle = '') => {
       tools: [
         { name: 'meteo.delivery_impact', desc: 'Precipitation & dispatch delay scoring', badge: 'Live Forecast', query: '₦meteo check delivery delay index' },
         { name: 'meteo.route_risk', desc: 'Logistics road condition alerts for NG cities', badge: 'Realtime', query: '₦meteo check road risk in Lagos' },
-        { name: 'arc.usdc_settlement', desc: 'Instant automated driver / agent dispatch payouts', badge: 'Onchain', query: 'Send 5 USDC to ₦meteo' }
+        { name: 'bsc.bnb_settlement', desc: 'Instant automated driver / agent dispatch payouts', badge: 'Onchain', query: 'Send 0.01 BNB to ₦meteo' }
       ]
     };
   }
@@ -74,25 +74,25 @@ const getAgentSpec = (handle = '') => {
       prompts: [
         { label: 'ðŸ’± Live USDC to NGN market exchange rate', query: '₦coingecko what is current USDC NGN exchange rate?' },
         { label: 'ðŸ“ˆ BTC & ETH 24h market momentum', query: '₦coingecko Bitcoin and Ethereum price momentum' },
-        { label: 'ðŸ“Š Arc USDC peg & FX valuation', query: '₦coingecko USDC peg and parallel FX spread' }
+        { label: '📊 BNB Chain valuation', query: '₦coingecko BNB market price and volume' }
       ],
       tools: [
         { name: 'coingecko.usdc_ngn', desc: 'Real-time USDC/NGN and USD/NGN FX quotes', badge: 'Live FX', query: '₦coingecko get USDC/NGN rate' },
         { name: 'coingecko.market_pulse', desc: 'Crypto market 24h volume & momentum', badge: 'Oracle', query: '₦coingecko market pulse' },
-        { name: 'arc.usdc_settlement', desc: 'Micro-settlements on Arc Mainnet', badge: 'Onchain', query: 'Send 5 USDC to ₦coingecko' }
+        { name: 'bsc.bnb_settlement', desc: 'Micro-settlements on BNB Smart Chain', badge: 'Onchain', query: 'Send 0.01 BNB to ₦coingecko' }
       ]
     };
   }
   return {
     prompts: [
-      { label: '⚠️ Arc gas fees & liquidity overview', query: 'Analyze current Arc Mainnet gas prices and liquidity' },
-      { label: `ðŸ’¸ Send 5 USDC to ₦${h.toUpperCase()}`, query: `Send 5 USDC reward to ₦${h} on Arc` },
-      { label: 'ðŸ›¡ï¸ Verify ERC-8004 sovereign registry record', query: `Explain ERC-8004 identity for ₦${h}` }
+      { label: '⚠️ BNB Chain gas fees & liquidity overview', query: 'Analyze current BNB Smart Chain gas prices and liquidity' },
+      { label: `💸 Send 0.01 BNB to ₦${h.toUpperCase()}`, query: `Send 0.01 BNB reward to ₦${h} on BNB Chain` },
+      { label: '🛡️ Verify sovereign registry record', query: `Explain identity record for ₦${h}` }
     ],
     tools: [
-      { name: 'arc.usdc_settlement', desc: 'Zero-gas native USDC transfers on Arc', badge: 'Instant', query: `Send 10 USDC to ₦${h}` },
-      { name: 'arc.voice_mode', desc: 'Voice call interface with low latency speech orb', badge: 'Voice', query: `Start voice session with ₦${h}` },
-      { name: 'arc.erc8004_identity', desc: 'Onchain agent credential & reputation registry', badge: 'Verified', query: `Inspect ERC-8004 identity ₦${h}` }
+      { name: 'bsc.bnb_settlement', desc: 'Fast native transfers on BNB Chain', badge: 'Instant', query: `Send 0.01 BNB to ₦${h}` },
+      { name: 'voice_mode', desc: 'Voice call interface with low latency speech orb', badge: 'Voice', query: `Start voice session with ₦${h}` },
+      { name: 'erc8004_identity', desc: 'Onchain agent credential & reputation registry', badge: 'Verified', query: `Inspect identity ₦${h}` }
     ]
   };
 };
@@ -142,7 +142,7 @@ export default function PublicProfilePage({ rawHandle, type = 'agent' }) {
   };
 
   useEffect(() => {
-    document.title = `${displayTag} Â· NairaTag on Arc`;
+    document.title = `${displayTag} · NairaTag on BNB Chain`;
   }, [displayTag]);
 
   useEffect(() => {
@@ -214,12 +214,12 @@ export default function PublicProfilePage({ rawHandle, type = 'agent' }) {
   };
 
   const shareToTwitter = () => {
-    const text = `Check out ${displayTag} on @NairaTaghq â€” sovereign onchain AI agent on Arc Network: ${window.location.href}`;
+    const text = `Check out ${displayTag} on @NairaTaghq â€” sovereign onchain AI agent on BNB Chain: ${window.location.href}`;
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   const shareToTelegram = () => {
-    const text = `Meet ${displayTag} on NairaTag (Arc Network):`;
+    const text = `Meet ${displayTag} on NairaTag (BNB Chain):`;
     window.open(`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(text)}`, '_blank');
   };
 
@@ -251,8 +251,8 @@ export default function PublicProfilePage({ rawHandle, type = 'agent' }) {
   const agentCategory = agentProfile?.category || (isAgent ? 'Autonomous Agent' : 'NairaTag Identity');
   const agentBio = agentProfile?.role || (
     cleanTag === 'bloom'
-      ? 'Autonomous DeFi research & intelligence agent on Arc Network. Real-time liquidity analytics and instant USDC settlements.'
-      : `Sovereign onchain identity and personal autonomous agent on Arc Network. Verified ERC-8004 credentials.`
+      ? 'Autonomous DeFi research & intelligence agent on BNB Chain. Real-time liquidity analytics and instant BNB settlements.'
+      : `Sovereign onchain identity and personal autonomous agent on BNB Chain. Verified smart contract credentials.`
   );
 
   return (
@@ -280,12 +280,12 @@ export default function PublicProfilePage({ rawHandle, type = 'agent' }) {
           <div className="twitter-header-titles">
             <h1 className="twitter-header-title">
               {displayName}
-              <span className="twitter-verified-badge" title="Verified NairaTag on Arc">
+              <span className="twitter-verified-badge" title="Verified NairaTag on BNB Chain">
                 <ShieldCheck size={16} strokeWidth={2.6} />
               </span>
             </h1>
             <span className="twitter-header-subtitle">
-              ₦{lowercaseTag} Â· Arc Mainnet
+              ₦{lowercaseTag} · BNB Smart Chain
             </span>
           </div>
         </div>
@@ -444,7 +444,7 @@ export default function PublicProfilePage({ rawHandle, type = 'agent' }) {
             <div className="twitter-meta-item">
               <ShieldCheck size={13} color="#10b981" />
               <a
-                href={`https://explorer.arc.io/token/${ARC_ERC8004_IDENTITY_REGISTRY}`}
+                href={`https://bscscan.com/address/${ARC_ERC8004_IDENTITY_REGISTRY}`}
                 target="_blank"
                 rel="noreferrer"
                 className="twitter-meta-link"
@@ -456,7 +456,7 @@ export default function PublicProfilePage({ rawHandle, type = 'agent' }) {
 
             <div className="twitter-meta-item">
               <Globe size={13} />
-              <span style={{ color: 'var(--tw-text-muted)' }}>Arc Mainnet (5042)</span>
+              <span style={{ color: 'var(--tw-text-muted)' }}>BNB Smart Chain (56)</span>
             </div>
           </div>
 
@@ -560,39 +560,39 @@ export default function PublicProfilePage({ rawHandle, type = 'agent' }) {
             <div className="twitter-pay-card">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Send USDC to {displayTag}</h3>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Send BNB to {displayTag}</h3>
                   <span style={{ fontSize: 12.5, color: 'var(--tw-text-muted)' }}>
-                    Arc Mainnet Â· Instant Peer Settlement
+                    BNB Smart Chain · Instant Peer Settlement
                   </span>
                 </div>
                 <span className="twitter-category-badge">Zero Gas</span>
               </div>
 
               <div className="twitter-input-group">
-                <label className="twitter-input-label">Quick Presets (USDC)</label>
+                <label className="twitter-input-label">Quick Presets (BNB)</label>
                 <div className="twitter-amount-presets">
-                  {['5', '15', '25', '50', '100'].map((amt) => (
+                  {['0.01', '0.05', '0.1', '0.5', '1.0'].map((amt) => (
                     <button
                       key={amt}
                       type="button"
                       className={`twitter-preset-btn ${payAmount === amt ? 'selected' : ''}`}
                       onClick={() => setPayAmount(amt)}
                     >
-                      ${amt}
+                      {amt} BNB
                     </button>
                   ))}
                 </div>
               </div>
 
               <div className="twitter-input-group">
-                <label className="twitter-input-label">Custom Amount (USDC)</label>
+                <label className="twitter-input-label">Custom Amount (BNB)</label>
                 <input
                   type="number"
                   step="any"
                   className="twitter-text-input"
                   value={payAmount}
                   onChange={(e) => setPayAmount(e.target.value)}
-                  placeholder="e.g. 10.00"
+                  placeholder="e.g. 0.05"
                 />
               </div>
 
@@ -613,7 +613,7 @@ export default function PublicProfilePage({ rawHandle, type = 'agent' }) {
                 style={{ height: 44, fontSize: 14.5, justifyContent: 'center', marginTop: 8 }}
                 onClick={handleExecuteSend}
               >
-                {paySuccess ? 'âœ“ Connecting to Walletâ€¦' : `Pay $${payAmount} USDC to ${displayTag}`}
+                {paySuccess ? '✓ Connecting to Wallet…' : `Pay ${payAmount} BNB to ${displayTag}`}
               </button>
             </div>
           </div>
@@ -631,7 +631,7 @@ export default function PublicProfilePage({ rawHandle, type = 'agent' }) {
                 <div className="twitter-spec-item">
                   <span className="twitter-spec-label">Agent Identity Registry</span>
                   <a
-                    href={`https://explorer.arc.io/token/${ARC_ERC8004_IDENTITY_REGISTRY}`}
+                    href={`https://bscscan.com/address/${ARC_ERC8004_IDENTITY_REGISTRY}`}
                     target="_blank"
                     rel="noreferrer"
                     className="twitter-spec-value"
@@ -644,7 +644,7 @@ export default function PublicProfilePage({ rawHandle, type = 'agent' }) {
                 <div className="twitter-spec-item">
                   <span className="twitter-spec-label">Reputation Registry</span>
                   <a
-                    href={`https://explorer.arc.io/address/${ARC_ERC8004_REPUTATION_REGISTRY}`}
+                    href={`https://bscscan.com/address/${ARC_ERC8004_REPUTATION_REGISTRY}`}
                     target="_blank"
                     rel="noreferrer"
                     className="twitter-spec-value"
@@ -657,7 +657,7 @@ export default function PublicProfilePage({ rawHandle, type = 'agent' }) {
                 <div className="twitter-spec-item">
                   <span className="twitter-spec-label">Native Settlement Token</span>
                   <a
-                    href={`https://explorer.arc.io/address/${ARC_USDC_ADDRESS}`}
+                    href={`https://bscscan.com/address/${ARC_USDC_ADDRESS}`}
                     target="_blank"
                     rel="noreferrer"
                     className="twitter-spec-value"
@@ -701,7 +701,7 @@ export default function PublicProfilePage({ rawHandle, type = 'agent' }) {
             </div>
 
             <p style={{ margin: '0 0 12px 0', fontSize: 13, color: 'var(--tw-text-muted)' }}>
-              Send instant USDC on Arc Mainnet directly to this ₦Tag.
+              Send instant crypto on BNB Smart Chain directly to this ₦Tag.
             </p>
 
             <div className="twitter-input-group">

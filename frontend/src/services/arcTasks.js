@@ -8,11 +8,11 @@ const RETIRED_TASK_TITLES = new Set([
   'design dark-canvas sovereign agent card assets',
   'build an opera minipay deep-link widget',
   'forex spot rate verification (usdc / ngn)',
-  'defi tvl & price benchmark feed on arc mainnet',
-  'supply defi tvl & protocol liquidity rankings for arc agents',
+  'defi tvl & price benchmark feed on bnb smart chain',
+  'supply defi tvl & protocol liquidity rankings for bnb agents',
   'weather & city commerce oracle telemetry',
-  'sub-second settlement benchmark on arc mainnet',
-  'monitor the arc mainnet tag',
+  'sub-second settlement benchmark on bnb smart chain',
+  'monitor the bnb smart chain tag',
   'defi tvl & liquidity health audit',
   'commercial delivery weather risk clearance',
   'real-time fx exchange rate benchmark',
@@ -59,7 +59,7 @@ function mapProgress(progress) {
 }
 async function readResponse(response) {
   const body = await response.json().catch(() => ({}));
-  if (!response.ok || !body.ok) throw new Error(body.error || `Arc task service returned ${response.status}.`);
+  if (!response.ok || !body.ok) throw new Error(body.error || `BNB Chain task service returned ${response.status}.`);
   return body;
 }
 async function sha256Hex(value) {
@@ -142,7 +142,7 @@ async function submitAction({ action, taskId, walletAddress, deliverable, taskTi
   if (!walletAddress) throw new Error('Sign in to update task progress.');
   const timestamp = Date.now();
   const deliverableHash = action === 'submit' ? await sha256Hex(deliverable) : '';
-  const message = ['NairaTag Arc Tasks', `Action: ${action}`, `Task: ${taskId}`, `Wallet: ${walletAddress.toLowerCase()}`, `Chain: ${ARC_CHAIN_ID}`, `Timestamp: ${timestamp}`, ...(deliverableHash ? [`Deliverable SHA-256: ${deliverableHash}`] : [])].join('\n');
+  const message = ['NairaTag BNB Tasks', `Action: ${action}`, `Task: ${taskId}`, `Wallet: ${walletAddress.toLowerCase()}`, `Chain: ${ARC_CHAIN_ID}`, `Timestamp: ${timestamp}`, ...(deliverableHash ? [`Deliverable SHA-256: ${deliverableHash}`] : [])].join('\n');
   const provider = window.ethereum;
   const token = sessionToken || getArcSessionToken(walletAddress);
   if (!token && !provider?.request) throw new Error('Sign in again to authorize this task update.');
