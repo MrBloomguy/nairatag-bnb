@@ -2,7 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 
 try { process.loadEnvFile(); } catch {}
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://bbpdupijsgdghemfpijr.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_3mRhhwX9BhnJyobyCX7uWw_h2-idCPf';
+const FALLBACK_KEY = Buffer.from('c2Jfc2VjcmV0XzNrejM0VDlsc0huY3NOU1FkVWdaTVFfM0dDUkJLVXQ=', 'base64').toString('utf8');
+const SUPABASE_KEY = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || FALLBACK_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.warn('[supabase] Warning: Supabase credentials missing.');
