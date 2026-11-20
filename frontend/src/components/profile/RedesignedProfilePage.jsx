@@ -139,8 +139,8 @@ export default function RedesignedProfilePage({
               <h2 className="settings-profile-name">{displayName}</h2>
               <div className="settings-profile-sub">{accountEmail || (walletAddress ? `${walletAddress.slice(0, 8)}…${walletAddress.slice(-6)}` : 'BNB Account')}</div>
               {cleanTag ? (
-                <span className="profile-verified-badge" style={{ fontSize: 11, gap: 4 }}>
-                  <ShieldCheck size={12} color="#0052FF" /> Verified ₦Tag
+                <span className="profile-verified-badge" style={{ fontSize: 11, gap: 4, color: '#F0B90B', background: 'rgba(240, 185, 11, 0.1)', border: '1px solid rgba(240, 185, 11, 0.3)' }}>
+                  <ShieldCheck size={12} color="#F0B90B" /> Verified ₦Tag & SPACE ID (.ai)
                 </span>
               ) : (
                 <button type="button" className="settings-edit-link" onClick={onClaimTag}>
@@ -160,10 +160,29 @@ export default function RedesignedProfilePage({
                   <span>{cleanTag ? `Tag: ₦${cleanTag}` : 'Claim your NairaTag'}</span>
                 </div>
                 <div className="settings-item-right">
-                  <span>{cleanTag ? 'Active' : 'Get Tag'}</span>
+                  <span>{cleanTag ? 'Active on BSC' : 'Get Tag'}</span>
                   <ChevronRight size={16} />
                 </div>
               </button>
+
+              {cleanTag && (
+                <a
+                  href={`https://bscscan.com/token/0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F?a=${walletAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="settings-item-row"
+                  style={{ textDecoration: 'none' }}
+                >
+                  <div className="settings-item-left">
+                    <span className="settings-item-icon" style={{ fontSize: '15px' }}>🟡</span>
+                    <span>SPACE ID (.ai)</span>
+                  </div>
+                  <div className="settings-item-right">
+                    <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#F0B90B' }}>{cleanTag.toLowerCase()}.ai</span>
+                    <ExternalLink size={14} color="#F0B90B" />
+                  </div>
+                </a>
+              )}
 
               <button type="button" className="settings-item-row" onClick={handleCopyWallet}>
                 <div className="settings-item-left">
@@ -171,7 +190,7 @@ export default function RedesignedProfilePage({
                   <span>Wallet & Balance</span>
                 </div>
                 <div className="settings-item-right">
-                  <span>${usdcBalance.formatted} USDC</span>
+                  <span>{usdcBalance.formatted} BNB</span>
                   {copied ? <Check size={14} color="#10b981" /> : <ChevronRight size={16} />}
                 </div>
               </button>

@@ -61,8 +61,26 @@ export default function AgentSuccessModal({ tag, progress = {}, variant = 'compl
         </div>
         <img className="agent-success-avatar-badge" src="/verified-badge.png" alt="Verified NairaTag agent" />
       </div>
-      <p className="agent-success-eyebrow">{isClaim ? 'TAG CLAIMED' : 'AGENT SETUP COMPLETE'}</p>
+      <p className="agent-success-eyebrow">{isClaim ? 'TAG CLAIMED · SPACE ID RESOLVED' : 'AGENT SETUP COMPLETE'}</p>
       <h2 id="agent-success-title">{isClaim ? `\u20a6${cleanTag} is yours!` : `\u20a6${cleanTag} is ready!`}</h2>
+      {isClaim && (
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          background: 'rgba(240, 185, 11, 0.12)',
+          border: '1px solid rgba(240, 185, 11, 0.35)',
+          borderRadius: '999px',
+          padding: '3px 12px',
+          fontSize: '11.5px',
+          color: '#F0B90B',
+          fontWeight: 700,
+          margin: '0 auto 12px',
+        }}>
+          <span>🟡</span>
+          <span>Resolved SPACE ID: {cleanTag.toLowerCase()}.ai (BSC Chain)</span>
+        </div>
+      )}
       {isClaim && points > 0 && <div className="agent-success-earned-points" aria-live="polite" aria-label={`You earned ${points} points`}><Award size={18} aria-hidden="true" /><strong>+{animatedPoints}</strong><span>Pts earned</span></div>}
       {!isClaim && <p className="agent-success-copy">{points === 100
           ? `You and \u20a6${cleanTag} completed the 100 Pts welcome reward.`

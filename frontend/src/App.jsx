@@ -102,6 +102,7 @@ import {
 import { clearArcSession, establishPrivyArcSession, establishWalletArcSession, getArcSessionToken, linkArcWallet } from './services/arcSession.js';
 import {
   resolveTag,
+  getSpaceIdForWallet,
 } from './services/nairatagResolver.js';
 import { checkArcTagAvailability, claimArcNairaTag, getArcTagForWallet } from './services/arcNairaTag.js';
 import {
@@ -1355,7 +1356,16 @@ function ArcAppShell() {
   const [balanceLoading, setBalanceLoading] = useState(false);
   const [copiedKey, setCopiedKey] = useState(null);
   const [myTag, setMyTag] = useState(null);
+  const [mySpaceId, setMySpaceId] = useState(null);
   const displayUserTag = myTag?.tag ? `₦${String(myTag.tag).replace(/^[$₦]/, '').toUpperCase()}` : null;
+  const displaySpaceId = useMemo(() => {
+    if (mySpaceId?.name) return mySpaceId.name;
+    if (myTag?.tag) {
+      const clean = String(myTag.tag).replace(/^[₦$@#]/, '').toLowerCase();
+      return `${clean}.ai`;
+    }
+    return null;
+  }, [mySpaceId, myTag]);
   const [accountEmail, setAccountEmail] = useState('');
   const accountUsername = accountEmail.includes('@') ? accountEmail.slice(0, accountEmail.indexOf('@')) : accountEmail;
   const displayAccountName = displayUserTag || (accountUsername ? `₦${accountUsername.toUpperCase()}` : null);
@@ -2047,6 +2057,12 @@ function ArcAppShell() {
       } else {
         setMyTag(null);
       }
+      getSpaceIdForWallet(address)
+        .then((sp) => {
+          if (sp?.hasSpaceId) setMySpaceId(sp);
+          else setMySpaceId(null);
+        })
+        .catch(() => setMySpaceId(null));
       return { balance: bal, tag };
     } catch (e) {
       console.warn('Balance refresh failed:', e);
@@ -2054,6 +2070,20 @@ function ArcAppShell() {
       setBalanceLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    if (!walletAddress) {
+      setMySpaceId(null);
+      return;
+    }
+    getSpaceIdForWallet(walletAddress)
+      .then((sp) => {
+        if (active && sp?.hasSpaceId) setMySpaceId(sp);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [walletAddress]);
 
   useEffect(() => {
     clearArcSession();
@@ -4013,17 +4043,17 @@ function ArcAppShell() {
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '6px',
-                      background: 'rgba(16, 185, 129, 0.12)',
-                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                      background: 'rgba(240, 185, 11, 0.12)',
+                      border: '1px solid rgba(240, 185, 11, 0.35)',
                       borderRadius: '999px',
                       padding: '4px 14px',
                       marginBottom: '16px',
                       fontSize: '12px',
-                      color: '#059669',
+                      color: '#F0B90B',
                       fontWeight: 700,
                     }}>
                       <Check size={13} strokeWidth={3} />
-                      <span>Identity Active on BNB Chain</span>
+                      <span>Identity Active on BSC Chain</span>
                     </div>
 
                     <div
@@ -4042,9 +4072,58 @@ function ArcAppShell() {
                       <span>{String(myTag.tag).replace(/^[$₦]/, '').toUpperCase()}</span>
                     </div>
 
-                    <p style={{ color: '#64748b', fontSize: '13px', margin: '8px 0 20px', lineHeight: 1.5 }}>
+                    <p style={{ color: '#64748b', fontSize: '13px', margin: '8px 0 12px', lineHeight: 1.5 }}>
                       Bound to <code style={{ fontSize: '11px', background: 'rgba(0,0,0,0.05)', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>{walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}</code> · 1 Tag per account
                     </p>
+
+                    {displaySpaceId && (
+                      <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        background: 'rgba(240, 185, 11, 0.08)',
+                        border: '1px solid rgba(240, 185, 11, 0.28)',
+                        borderRadius: '10px',
+                        padding: '6px 14px',
+                        marginBottom: '18px',
+                        maxWidth: '92%',
+                      }}>
+                        <span style={{ fontSize: '13px' }}>🟡</span>
+                        <span style={{ fontSize: '12px', color: '#F0B90B', fontWeight: 650 }}>Resolved SPACE ID:</span>
+                        <code style={{
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          color: '#FFFFFF',
+                          background: 'rgba(0, 0, 0, 0.45)',
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                          fontFamily: 'monospace',
+                          border: '1px solid rgba(240, 185, 11, 0.2)',
+                        }}>
+                          {displaySpaceId}
+                        </code>
+                        <a
+                          href={`https://bscscan.com/token/0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F?a=${walletAddress}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="View on BscScan"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                            fontSize: '11px',
+                            color: '#F0B90B',
+                            textDecoration: 'none',
+                            fontWeight: 700,
+                            marginLeft: '2px',
+                          }}
+                        >
+                          <span>BscScan</span>
+                          <ExternalLink size={11} />
+                        </a>
+                      </div>
+                    )}
 
                     <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
                       <button
