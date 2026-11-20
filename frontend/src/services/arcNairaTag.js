@@ -23,12 +23,8 @@ export function normalizeArcTag(rawTag) {
 }
 
 export const RESERVED_PROTOCOL_AGENTS = {
+  binance: { owner: '0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F', name: 'Binance Agentic Markets' },
   nairatag: { owner: '0x653f773C9062e71A6554b42a9525fcD47fCC1693', name: 'NairaTag Core Protocol' },
-  bloom: { owner: '0x7c26a1F03339E2Ea74D261D97f5ab9C38181AF26', name: 'NairaTag Sovereign Agent' },
-  defillama: { owner: '0xbfA1f73F632a54bFd04e9925dB6006135FcA6Ce6', name: 'DefiLlama Oracle' },
-  meteo: { owner: '0x235d0Aa81F1c375c3325214f2dd7F205487eae36', name: 'Open-Meteo Weather' },
-  coingecko: { owner: '0x1abfC727335489f2914Effd7e19C19C309850Ef8', name: 'CoinGecko FX' },
-  arc: { owner: '0x653f773C9062e71A6554b42a9525fcD47fCC1693', name: 'Arc Protocol' },
 };
 
 async function getWalletTagRecord(walletAddress) {

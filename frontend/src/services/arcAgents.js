@@ -77,11 +77,6 @@ export function mapArcAgentRecord(agent = {}) {
 export const PROTOCOL_AGENT_POINTS = {
   nairatag: 250,
   binance: 300,
-  bloom: 200,
-  coingecko: 200,
-  defillama: 200,
-  meteo: 200,
-  arc: 200,
 };
 
 const MARKETPLACE_AGENTS = [
@@ -145,120 +140,6 @@ const MARKETPLACE_AGENTS = [
       { key: 'nairatag.resolve_tag', name: 'Resolve NairaTag', description: 'Resolve sovereign NairaTag handles to BNB smart accounts.', risk: 'read_only', availability: 'enabled' },
       { key: 'arc.agent_transfer', name: 'Agent-to-Agent Payment', description: 'Execute policy-governed BNB settlements between agents.', risk: 'payment', availability: 'enabled' },
       { key: 'arc.escrow_payout', name: 'Escrow Bounty Release', description: 'Release escrowed BNB task bounties to verified workers upon milestone completion.', risk: 'payment', availability: 'enabled' }
-    ]
-  },
-  {
-    id: 'agent_sovereign_bloom',
-    tag: 'bloom',
-    owner: '0x7c26a1F03339E2Ea74D261D97f5ab9C38181AF26',
-    canonicalTag: '₦BLOOM',
-    name: 'NairaTag',
-    displayName: 'NairaTag',
-    category: '',
-    role: 'Official AI assistant for the NairaTag protocol on BNB Chain. Helps with instant BNB payments, tag lookups, and task rewards.',
-    avatar: 'https://api.dicebear.com/7.x/identicon/svg?seed=bloom',
-    status: 'active',
-    points: 200,
-    earnings: 0,
-    earningsCurrency: 'BNB',
-    entityType: 'autonomous_agent',
-    invocationMethods: ['text', 'voice'],
-    identity: {
-      type: 'erc8004',
-      verifiedOnchain: true,
-      erc8004AgentId: '800400',
-      registry: '0x6d3950a390c7f60287d545cc5785c594e07439f9'
-    },
-    callableTools: ['arc.list_tasks', 'nairatag.resolve_tag', 'nairatag.discover_agents', 'arc.agent_transfer'],
-    usedByCount: null,
-    tools: [
-      { key: 'arc.list_tasks', name: 'List Tasks', description: 'Query and coordinate available agent tasks on BNB Chain.', risk: 'read_only', availability: 'enabled' },
-      { key: 'nairatag.resolve_tag', name: 'Resolve NairaTag', description: 'Resolve sovereign NairaTag handles to BNB smart accounts.', risk: 'read_only', availability: 'enabled' },
-      { key: 'arc.agent_transfer', name: 'Agent-to-Agent Payment', description: 'Execute policy-governed BNB settlements between agents.', risk: 'payment', availability: 'enabled' }
-    ]
-  },
-  {
-    id: 'agent_marketplace_defillama',
-    tag: 'defillama',
-    owner: '0xbfA1f73F632a54bFd04e9925dB6006135FcA6Ce6',
-    canonicalTag: '₦DEFILLAMA',
-    name: 'DefiLlama DeFi Oracle',
-    displayName: 'DefiLlama DeFi Oracle',
-    category: 'DeFi & Analytics',
-    role: 'Autonomous DeFi analytics oracle. Provides real-time protocol TVL, yields, and liquidity rankings for BNB Chain agents.',
-    avatar: '/agents/defillama.png',
-    status: 'active',
-    points: 200,
-    earnings: 0,
-    earningsCurrency: 'BNB',
-    entityType: 'marketplace_agent',
-    invocationMethods: ['text', 'voice'],
-    identity: {
-      type: 'erc8004',
-      verifiedOnchain: true,
-      erc8004AgentId: '800401',
-      registry: '0x6d3950a390c7f60287d545cc5785c594e07439f9'
-    },
-    callableTools: ['defillama.tvl', 'defillama.prices', 'defillama.protocols'],
-    tools: [
-      { key: 'defillama.tvl', name: 'Protocol TVL & Momentum', description: 'Read live Total Value Locked across global chains and protocols.', risk: 'read_only', availability: 'enabled' },
-      { key: 'defillama.prices', name: 'Token Price Feed', description: 'Fetch multi-chain token pricing benchmarks with zero rate limits.', risk: 'read_only', availability: 'enabled' }
-    ]
-  },
-  {
-    id: 'agent_marketplace_meteo',
-    tag: 'meteo',
-    owner: '0x235d0Aa81F1c375c3325214f2dd7F205487eae36',
-    canonicalTag: '₦METEO',
-    name: 'Open-Meteo Logistics Weather',
-    displayName: 'Open-Meteo Logistics Weather',
-    category: 'Logistics & Weather',
-    role: 'Autonomous meteorological risk analyzer. Provides real-time rainfall, temperature, and logistics impact scores for Nigerian delivery agents.',
-    avatar: '/agents/meteo.png',
-    status: 'active',
-    points: 200,
-    earnings: 0,
-    earningsCurrency: 'BNB',
-    entityType: 'marketplace_agent',
-    invocationMethods: ['text', 'voice'],
-    identity: {
-      type: 'erc8004',
-      verifiedOnchain: true,
-      erc8004AgentId: '800402',
-      registry: '0x6d3950a390c7f60287d545cc5785c594e07439f9'
-    },
-    callableTools: ['meteo.weather', 'meteo.delivery_impact'],
-    tools: [
-      { key: 'meteo.weather', name: 'Nigerian Hub Weather', description: 'Real-time temperature, precipitation, and wind speeds in Lagos, Abuja, Kano, and Port Harcourt.', risk: 'read_only', availability: 'enabled' },
-      { key: 'meteo.delivery_impact', name: 'Logistics Rain Impact Score', description: 'Calculate weather risk level (LOW/MODERATE/HIGH) and rider ETA delay minutes for dispatch agents.', risk: 'read_only', availability: 'enabled' }
-    ]
-  },
-  {
-    id: 'agent_marketplace_coingecko',
-    tag: 'coingecko',
-    owner: '0x1abfC727335489f2914Effd7e19C19C309850Ef8',
-    canonicalTag: '₦COINGECKO',
-    name: 'CoinGecko FX Benchmark',
-    displayName: 'CoinGecko FX Benchmark',
-    category: 'FX & Pricing',
-    role: 'Autonomous fiat & crypto pricing oracle. Supplies real-time USD/NGN exchange rates and BNB valuations for cross-agent settlement.',
-    avatar: '/agents/coingecko.png',
-    status: 'active',
-    points: 200,
-    earnings: 0,
-    earningsCurrency: 'BNB',
-    entityType: 'marketplace_agent',
-    invocationMethods: ['text', 'voice'],
-    identity: {
-      type: 'erc8004',
-      verifiedOnchain: true,
-      erc8004AgentId: '800403',
-      registry: '0x6d3950a390c7f60287d545cc5785c594e07439f9'
-    },
-    callableTools: ['coingecko.usdc_ngn', 'coingecko.prices'],
-    tools: [
-      { key: 'coingecko.usdc_ngn', name: 'Live BNB to NGN FX Rate', description: 'Read official real-time exchange rates between BNB and Nigerian Naira for autonomous settlement.', risk: 'read_only', availability: 'enabled' },
-      { key: 'coingecko.prices', name: 'Crypto Spot Benchmarks', description: 'Fetch spot prices and 24h market momentum across crypto assets.', risk: 'read_only', availability: 'enabled' }
     ]
   }
 ];

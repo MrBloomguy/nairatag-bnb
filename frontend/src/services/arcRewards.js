@@ -1,4 +1,4 @@
-﻿import { broadcastArcRewardToTelegram } from './arcSocialBroadcast.js';
+import { broadcastArcRewardToTelegram } from './arcSocialBroadcast.js';
 import { getArcSessionTokenForLinkedWallet } from './arcSession.js';
 
 const ARC_REWARDS_API = import.meta.env.VITE_ARC_REWARDS_API || '/api/arc-rewards';

@@ -1,6 +1,6 @@
 /**
  * @file api/claims.js
- * @description Native NairaTag Identity and Resolution Handler for Arc Network.
+ * @description Native NairaTag Identity and Resolution Handler for BNB Chain.
  * Handles instant tag resolution, availability checks, and claims lookup directly.
  */
 
@@ -12,13 +12,8 @@ const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABAS
 const SUPABASE_KEY = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_3mRhhwX9BhnJyobyCX7uWw_h2-idCPf';
 
 export const RESERVED_PROTOCOL_AGENTS = {
+  binance: { address: '0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F', name: 'Binance Agentic Markets', tag: '₦BINANCE' },
   nairatag: { address: '0x653f773C9062e71A6554b42a9525fcD47fCC1693', name: 'NairaTag Core Protocol', tag: '₦NAIRATAG' },
-  bloom: { address: '0x7c26a1F03339E2Ea74D261D97f5ab9C38181AF26', name: 'NairaTag Sovereign Agent', tag: '₦BLOOM' },
-  defillama: { address: '0xbfA1f73F632a54bFd04e9925dB6006135FcA6Ce6', name: 'DefiLlama Oracle', tag: '₦DEFILLAMA' },
-  meteo: { address: '0x235d0Aa81F1c375c3325214f2dd7F205487eae36', name: 'Open-Meteo Weather', tag: '₦METEO' },
-  coingecko: { address: '0x1abfC727335489f2914Effd7e19C19C309850Ef8', name: 'CoinGecko FX', tag: '₦COINGECKO' },
-  ola: { address: '0x033d1fa7b2a3a25c9cc24254eacd47f0bdb83dfa', name: 'Ola', tag: '₦OLA' },
-  arc: { address: '0x653f773C9062e71A6554b42a9525fcD47fCC1693', name: 'Arc Protocol', tag: '₦ARC' },
 };
 
 async function supabaseFetch(path, options = {}) {
@@ -310,7 +305,7 @@ export default async function handler(req, res) {
 
       return res.status(200).json({
         ok: true,
-        message: `₦${tag.toUpperCase()} successfully claimed and listed as an active agent on Arc.`,
+        message: `₦${tag.toUpperCase()} successfully claimed and listed as an active agent on BNB Chain.`,
         claim: rpcData,
       });
     }
