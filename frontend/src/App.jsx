@@ -4149,7 +4149,7 @@ function ArcAppShell() {
                             href={`https://bscscan.com/token/0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F?a=${walletAddress}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            title="View on BscScan Token Tracker"
+                            title="View your Agent ID on BscScan"
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -4160,15 +4160,15 @@ function ArcAppShell() {
                               fontWeight: 700,
                             }}
                           >
-                            <span>BscScan</span>
+                            <span>Holder Scan</span>
                             <ExternalLink size={11} />
                           </a>
                           <span style={{ color: 'rgba(240, 185, 11, 0.35)', fontSize: '11px' }}>|</span>
                           <a
-                            href={`https://space.id/search?query=${encodeURIComponent(displaySpaceId)}`}
+                            href="https://bscscan.com/token/0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F#inventory"
                             target="_blank"
                             rel="noopener noreferrer"
-                            title="View on SPACE ID Web3 Name Explorer"
+                            title="View All SPACE ID Agent IDs on BscScan"
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -4179,7 +4179,7 @@ function ArcAppShell() {
                               fontWeight: 700,
                             }}
                           >
-                            <span>SPACE ID</span>
+                            <span>All Agent IDs</span>
                             <ExternalLink size={11} />
                           </a>
                         </div>
