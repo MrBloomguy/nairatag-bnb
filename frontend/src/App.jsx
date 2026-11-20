@@ -199,6 +199,14 @@ import {
   sendNotificationAlert,
 } from './services/pushNotification.js';
 
+export function BinanceBscIcon({ size = 14, className = "" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} style={{ flexShrink: 0, display: 'inline-block', verticalAlign: 'middle' }}>
+      <path d="M16 3.5l4.3 4.3-8.6 8.6L7.4 12.1 16 3.5zm7.3 7.3l4.3 4.3-4.3 4.3-4.3-4.3 4.3-4.3zM8.7 18.9l-4.3-4.3 4.3-4.3 4.3 4.3-4.3 4.3zm7.3 7.3l-8.6-8.6 4.3-4.3 4.3 4.3 4.3-4.3 4.3 4.3-8.6 8.6zm0-10.7l-2.4-2.4 2.4-2.4 2.4 2.4-2.4 2.4z" fill="#F0B90B" />
+    </svg>
+  );
+}
+
 /**
  * Metallic & luminous badge emblems matching Reference 1 (Milestones).
  */
@@ -1847,9 +1855,10 @@ function ArcAppShell() {
 
   const agentEarningsLabel = (agent) => {
     const earnings = agentDirectoryStats[agent.tag]?.earnings ?? agent.earnings;
-    if (earnings === null || earnings === undefined || earnings === '') return '0 USDC';
+    if (earnings === null || earnings === undefined || earnings === '') return '0 BNB';
     const amount = Number(earnings);
-    return `${Number.isFinite(amount) ? amount.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '0'} ${agent.earningsCurrency || 'USDC'}`;
+    const currency = (agent.earningsCurrency && agent.earningsCurrency !== 'USDC') ? agent.earningsCurrency : 'BNB';
+    return `${Number.isFinite(amount) ? amount.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '0'} ${currency}`;
   };
 
   const agentPointsLabel = (agent) => {
@@ -4329,6 +4338,19 @@ function ArcAppShell() {
                     <div className="agent-directory-card-earnings">
                       <strong>{agentEarningsLabel(agent)}</strong>
                     </div>
+                    <a
+                      href={`https://bscscan.com/address/${agent.ownerWallet || agent.owner || '0x6d3950a390c7f60287d545cc5785c594e07439f9'}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="agent-bscscan-badge"
+                      title={`View on-chain claim for ₦${agent.tag} on BscScan`}
+                      aria-label={`View on-chain claim for ₦${agent.tag} on BscScan`}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <BinanceBscIcon size={12} />
+                      <span>On-Chain Claim</span>
+                      <ExternalLink size={10} style={{ opacity: 0.7 }} />
+                    </a>
                   </div>
                 ))}
                 {!filteredAgents.length && !agentDirectoryLoading && chatAgents.length > 0 && <div className="agent-directory-empty">No agents match this search.</div>}
@@ -4370,6 +4392,17 @@ function ArcAppShell() {
                     <div className="agent-circle-right">
                       <span className="agent-directory-points">{agentPointsLabel(agent)}</span>
                       <span className="agent-directory-earnings">{agentEarningsLabel(agent)}</span>
+                      <a
+                        href={`https://bscscan.com/address/${agent.ownerWallet || agent.owner || '0x6d3950a390c7f60287d545cc5785c594e07439f9'}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="agent-bscscan-icon-btn"
+                        title={`View on-chain claim for ₦${agent.tag} on BscScan`}
+                        aria-label={`View on-chain claim for ₦${agent.tag} on BscScan`}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <BinanceBscIcon size={14} />
+                      </a>
                       <ChevronRight size={16} color="var(--privy-color-foreground-3)" />
                     </div>
                   </div>
@@ -5944,7 +5977,7 @@ function ArcAppShell() {
                     )}
                   </div>
                   <div className="agent-profile-subtitle">
-                    {selectedAgentProfile.profileType === 'claimed-tag' ? 'NairaTag on Arc' : selectedAgentProfile.name}
+                    {selectedAgentProfile.profileType === 'claimed-tag' ? 'NairaTag on BNB Chain' : selectedAgentProfile.name}
                   </div>
                 </div>
                 {selectedAgentProfile.profileType !== 'claimed-tag' && selectedAgentProfile.profileType !== 'platform-agent' && (
@@ -5961,12 +5994,12 @@ function ArcAppShell() {
               </div>
 
               <p className="agent-profile-description">
-                {selectedAgentProfile.profileType === 'claimed-tag' ? 'NairaTag holder' : selectedAgentProfile.role}
+                {selectedAgentProfile.profileType === 'claimed-tag' ? 'Sovereign NairaTag on BNB Chain' : selectedAgentProfile.role}
               </p>
 
               <div className="agent-profile-stats">
                 <div><strong>{selectedAgentProfile.profileType === 'claimed-tag' || selectedAgentProfile.profileType === 'platform-agent' ? '—' : agentFollowState.loading ? '…' : agentFollowState.error ? '—' : agentFollowState.followerCount}</strong><span>Followers</span></div>
-                <div><strong>{selectedAgentProfile.profileType === 'platform-agent' ? (selectedAgentProfile.callableTools?.length || 0) : `${selectedAgentProfile.earnings ?? 0} USDC`}</strong><span>{selectedAgentProfile.profileType === 'platform-agent' ? 'Enabled tools' : 'Earned'}</span></div>
+                <div><strong>{selectedAgentProfile.profileType === 'platform-agent' ? (selectedAgentProfile.callableTools?.length || 0) : `${selectedAgentProfile.earnings ?? 0} BNB`}</strong><span>{selectedAgentProfile.profileType === 'platform-agent' ? 'Enabled tools' : 'Earned'}</span></div>
                 <div><strong>{selectedAgentProfile.identity?.verifiedOnchain && selectedAgentProfile.identity?.erc8004AgentId ? `#${selectedAgentProfile.identity.erc8004AgentId}` : selectedAgentProfile.profileType === 'platform-agent' ? 'Platform' : selectedAgentProfile.id ? `#${selectedAgentProfile.id}` : '—'}</strong><span>{selectedAgentProfile.profileType === 'platform-agent' ? 'Identity' : 'Agent ID'}</span></div>
                 <div><strong>{selectedAgentProfile.profileType === 'platform-agent' ? '—' : selectedAgentProfile.profileType === 'claimed-tag'
                   ? selectedAgentProfile.profileLoading ? '…' : selectedAgentProfile.completedTaskCount ?? '—'
@@ -6030,14 +6063,17 @@ function ArcAppShell() {
                 ><MessageSquare size={15} /> Chat</button>
               </div>
 
-              {selectedAgentProfile.identity?.verifiedOnchain && selectedAgentProfile.identity?.erc8004AgentId && (
                 <a
                   className="agent-profile-explorer-link"
-                  href={`https://erc-8004.quicknode.com/agents/arc-testnet/${selectedAgentProfile.identity.erc8004AgentId}`}
+                  href={`https://bscscan.com/address/${selectedAgentProfile.ownerWallet || selectedAgentProfile.owner || '0x6d3950a390c7f60287d545cc5785c594e07439f9'}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                >View agent on 8004scan <ExternalLink size={12} /></a>
-              )}
+                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: '#F0B90B', textDecoration: 'none', fontWeight: 700 }}
+                >
+                  <BinanceBscIcon size={14} />
+                  <span>View on-chain claim on BscScan</span>
+                  <ExternalLink size={12} />
+                </a>
             </div>
           </div>
         </div>

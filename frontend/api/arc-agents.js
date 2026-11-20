@@ -95,8 +95,8 @@ export default async function handler(req, res) {
         displayName: a.display_name || `₦${tag.toUpperCase()}`,
         name: a.display_name || `₦${tag.toUpperCase()}`,
         category: a.category || (a.owner_type === 'platform' ? 'Platform Agent' : 'User Agent'),
-        description: a.description || `Sovereign NairaTag user on Arc Mainnet`,
-        role: a.description || `Sovereign NairaTag user on Arc Mainnet`,
+        description: a.description || `Sovereign NairaTag user on BNB Chain`,
+        role: a.description || `Sovereign NairaTag user on BNB Chain`,
         avatarUrl: KNOWN_AGENT_LOGOS[tag] || a.avatar_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(tag)}`,
         ownerType: a.owner_type || 'user',
         ownerWallet: a.owner_wallet,
@@ -104,6 +104,7 @@ export default async function handler(req, res) {
         status: a.status || 'active',
         points: PROTOCOL_AGENT_POINTS[tag] ?? 20,
         earnings: 0,
+        earningsCurrency: 'BNB',
         createdAt: a.created_at,
       });
     }
@@ -119,8 +120,8 @@ export default async function handler(req, res) {
           displayName: `₦${tag.toUpperCase()}`,
           name: `₦${tag.toUpperCase()}`,
           category: 'User Agent',
-          description: `Sovereign NairaTag user on Arc Mainnet`,
-          role: `Sovereign NairaTag user on Arc Mainnet`,
+          description: `Sovereign NairaTag user on BNB Chain`,
+          role: `Sovereign NairaTag user on BNB Chain`,
           avatarUrl: c.avatar_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(tag)}`,
           ownerType: 'user',
           ownerWallet: c.wallet_address,
@@ -128,6 +129,7 @@ export default async function handler(req, res) {
           status: 'active',
           points: 20,
           earnings: 0,
+          earningsCurrency: 'BNB',
           createdAt: c.claimed_at,
         });
       }
@@ -144,8 +146,8 @@ export default async function handler(req, res) {
           displayName: `₦${tag.toUpperCase()}`,
           name: `₦${tag.toUpperCase()}`,
           category: 'User Agent',
-          description: `Sovereign NairaTag user on Arc Mainnet`,
-          role: `Sovereign NairaTag user on Arc Mainnet`,
+          description: `Sovereign NairaTag user on BNB Chain`,
+          role: `Sovereign NairaTag user on BNB Chain`,
           avatarUrl: `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(tag)}`,
           ownerType: 'user',
           ownerWallet: uc.wallet_address,
@@ -153,6 +155,7 @@ export default async function handler(req, res) {
           status: 'active',
           points: 20,
           earnings: 0,
+          earningsCurrency: 'BNB',
           createdAt: uc.claimed_at,
         });
       }
@@ -169,8 +172,8 @@ export default async function handler(req, res) {
           displayName: `₦${tag.toUpperCase()}`,
           name: `₦${tag.toUpperCase()}`,
           category: 'User Agent',
-          description: `Sovereign NairaTag user on Arc Mainnet`,
-          role: `Sovereign NairaTag user on Arc Mainnet`,
+          description: `Sovereign NairaTag user on BNB Chain`,
+          role: `Sovereign NairaTag user on BNB Chain`,
           avatarUrl: `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(tag)}`,
           ownerType: 'user',
           ownerWallet: p.wallet_address,
@@ -178,6 +181,7 @@ export default async function handler(req, res) {
           status: 'active',
           points: 20,
           earnings: 0,
+          earningsCurrency: 'BNB',
           createdAt: p.created_at,
         });
       }
@@ -189,28 +193,31 @@ export default async function handler(req, res) {
         tag: 'nairatag',
         displayName: '₦NAIRATAG',
         category: 'Protocol',
-        description: 'Universal naming orchestrator and gasless identity resolution engine on Arc.',
+        description: 'Universal naming orchestrator and identity resolution engine on BNB Chain.',
         ownerType: 'platform',
         ownerWallet: '0x653f773C9062e71A6554b42a9525fcD47fCC1693',
         points: 25000,
+        earningsCurrency: 'BNB',
       },
       {
         tag: 'bloom',
         displayName: '₦BLOOM',
         category: 'Sovereign Agent',
-        description: 'Flagship autonomous settlement agent and bounty solver on Arc Mainnet.',
+        description: 'Flagship autonomous settlement agent and bounty solver on BNB Chain.',
         ownerType: 'platform',
         ownerWallet: '0x7c26a1F03339E2Ea74D261D97f5ab9C38181AF26',
         points: 18500,
+        earningsCurrency: 'BNB',
       },
       {
         tag: 'defillama',
         displayName: '₦DEFILLAMA',
         category: 'Oracle',
-        description: 'Autonomous DeFi TVL & price benchmark feeds on Arc Mainnet.',
+        description: 'Autonomous DeFi TVL & price benchmark feeds on BNB Chain.',
         ownerType: 'platform',
         ownerWallet: '0xbfA1f73F632a54bFd04e9925dB6006135FcA6Ce6',
         points: 12400,
+        earningsCurrency: 'BNB',
       },
       {
         tag: 'meteo',
@@ -220,15 +227,17 @@ export default async function handler(req, res) {
         ownerType: 'platform',
         ownerWallet: '0x235d0Aa81F1c375c3325214f2dd7F205487eae36',
         points: 9800,
+        earningsCurrency: 'BNB',
       },
       {
         tag: 'coingecko',
         displayName: '₦COINGECKO',
         category: 'Forex',
-        description: 'Autonomous USDC/NGN conversion rates and spot price verification.',
+        description: 'Autonomous BNB/NGN conversion rates and spot price verification.',
         ownerType: 'platform',
         ownerWallet: '0x1abfC727335489f2914Effd7e19C19C309850Ef8',
         points: 8500,
+        earningsCurrency: 'BNB',
       },
     ];
 
@@ -249,6 +258,7 @@ export default async function handler(req, res) {
           status: 'active',
           points: core.points,
           earnings: 0,
+          earningsCurrency: core.earningsCurrency || 'BNB',
         });
       }
     }
